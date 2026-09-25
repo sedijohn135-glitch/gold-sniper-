@@ -243,6 +243,13 @@ class GoldSniper:
 
         positions = self.my_positions()
         self.check_closed(positions)
+        if positions and self.cfg.weekend_close(datetime.now(timezone.utc)):
+            log.info("E premte mbremje: mbyllen pozicionet para fundjaves")
+            for p in positions:
+                self.close(find_key(p, "positionId"), p)
+            self.tg.send("🔔 E premte mbremje: pozicionet u mbyllen para fundjaves. Boti rifillon te henen.")
+            positions = self.my_positions()
+            self.check_closed(positions)
         self.manage(positions)
         self.check_daily_loss(positions)
         self.open_summary = [
@@ -302,6 +309,8 @@ class GoldSniper:
             return log.info("  injoruar: pritje pas trade-it te fundit")
         if not c.in_session(hour):
             return log.info("  injoruar: jashte orarit (%d UTC)", hour)
+        if c.weekend_close(datetime.now(timezone.utc)):
+            return log.info("  injoruar: e premte mbremje / fundjave")
 
         bid, ask = self.spot()
         if ask - bid > c.max_spread:

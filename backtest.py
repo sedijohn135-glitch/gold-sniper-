@@ -30,6 +30,15 @@ def run(bars, cfg: Config, verbose=True):
             entry, risk, tp = pos["entry"], pos["risk"], pos["tp"]
             lo, hi = (b.l, b.h) if buy else (b.l + spread, b.h + spread)
             exit_px = None
+            # e premte mbremje: mbyll para fundjaves (hapja e se henes mund te kete gap)
+            if cfg.weekend_close(datetime.fromtimestamp(b.t / 1000, timezone.utc)) and \
+                    not ((buy and lo <= pos["sl"]) or (not buy and hi >= pos["sl"])):
+                exit_px = b.o if buy else b.o + spread
+                pos["exit"], pos["exit_t"] = exit_px, b.t
+                pos["r"] = ((exit_px - entry) if buy else (entry - exit_px)) / risk
+                trades.append(pos)
+                open_pos.remove(pos)
+                continue
             if (buy and lo <= pos["sl"]) or (not buy and hi >= pos["sl"]):
                 exit_px = pos["sl"]      # konservative: SL para TP ne te njejtin qiri
             elif tp is not None and ((buy and hi >= tp) or (not buy and lo <= tp)):
@@ -62,7 +71,8 @@ def run(bars, cfg: Config, verbose=True):
         free = all((q["sl"] >= q["entry"]) if q["side"] == "BUY" else (q["sl"] <= q["entry"]) for q in open_pos)
         if len(open_pos) < cfg.max_positions and free and i + 1 < len(bars) and i - last_entry_i >= cfg.cooldown_bars:
             nt = datetime.fromtimestamp(bars[i + 1].t / 1000, timezone.utc)
-            if not cfg.in_session(nt.hour) or per_day.get(nt.date(), 0) >= cfg.max_trades_per_day:
+            if not cfg.in_session(nt.hour) or per_day.get(nt.date(), 0) >= cfg.max_trades_per_day or \
+                    cfg.weekend_close(nt):
                 continue
             sig = detect(bars, i, p, ind)
             if not sig:

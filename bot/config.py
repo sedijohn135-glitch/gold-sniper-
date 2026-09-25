@@ -47,6 +47,7 @@ class Config:
     trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
     trend_trail_adr: float = 0.8  # ne dite trendi ne drejtimin e trade-it: trailing me i gjere (x ADR; 0 = si trail_adr)
     sticky_trend: bool = True     # trade-i qe njihet si trend mbetet i tille deri ne mbyllje
+    close_friday_utc: int = 19    # te premten ne kete ore UTC mbyll gjithcka, pa trade te reja deri te henen (-1 = joaktiv)
     rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
     max_daily_loss_pct: float = 3.0
@@ -64,6 +65,12 @@ class Config:
     @property
     def trailing(self) -> bool:
         return self.trail_adr > 0 and self.strategy.mode == "sniper"
+
+    def weekend_close(self, when) -> bool:
+        """E premte pas ores se mbylljes (ose fundjave): s'mbahen pozicione, s'hapen te reja."""
+        if self.close_friday_utc < 0:
+            return False
+        return (when.weekday() == 4 and when.hour >= self.close_friday_utc) or when.weekday() >= 5
 
     def in_session(self, hour: int) -> bool:
         if self.start_hour_utc <= self.end_hour_utc:
@@ -120,6 +127,7 @@ class Config:
             trail_start_r=_f("TRAIL_START_R", 1.0),
             trend_trail_adr=_f("TREND_TRAIL_ADR", 0.8),
             sticky_trend=_b("STICKY_TREND", True),
+            close_friday_utc=_i("CLOSE_FRIDAY_UTC", 19),
             rot_tp_adr=_f("ROT_TP_ADR", 0.3),
             max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),

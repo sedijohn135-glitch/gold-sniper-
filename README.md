@@ -64,6 +64,8 @@ me trendin, jo vetëm kundër tij.
   si 19 gushti (+203$) ose 2 shtatori. **Në ditët e trendit** (në drejtimin e trade-it) distanca
   bëhet **0.8 × ADR**, që trade-i të mos dalë nga një rikthim i zakonshëm i trendit.
 - Vetëm 1 pozicion njëherësh, max 4 trade në ditë, stop nëse humbja ditore arrin 3%.
+- **E premte 19:00 UTC (22:00 ora e grafikut):** mbyll gjithçka dhe s'hap trade të reja deri të hënën.
+  Pa këtë, një trade i së premtes mbahej gjithë fundjavën dhe e hënën (rrezik gap-i të hënën në mëngjes).
 - Tregton 01:00–20:00 UTC (= 04:00–23:00 në orën e grafikut IC Markets).
 
 ### Rezultati në 8 muaj (28 janar – 25 shtator, të dhëna reale M15 nga llogaria jote)
@@ -74,22 +76,21 @@ që s'i ka parë kurrë.
 
 | | **Sniper (fillestar)** | Sniper pa eficiencë dhe pa "trade trendi" | TP fiks 1:3 (`TRAIL_ADR=0`) | `MODE=klasik` |
 |---|---|---|---|---|
-| **Shkurt–maj (jashtë mostrës)** | **+108.2R** (DD 19.4R) | +36.1R (DD 20.9R) | −6.6R | −10.3R |
-| Qershor–shtator (ku u ndërtua) | +60.3R (DD 18.7R) | **+84.7R** (DD 14.8R) | +49.9R | +28.4R |
-| **8 muaj gjithsej** | **+150.2R** (DD 19.4R) | +104.6R (DD 20.9R) | +35.4R | +17.1R |
+| **Shkurt–maj (jashtë mostrës)** | **+97.9R** | +36.1R | −6.6R | −10.3R |
+| Qershor–shtator (ku u ndërtua) | +74.1R | **+84.7R** | +49.9R | +28.4R |
+| **8 muaj gjithsej** | **+150.3R** (DD 21.4R) | +104.6R (DD 20.9R) | +35.4R | +17.1R |
 | Trade në ditë | 2.7 | 2.8 | 3.3 | 2.0 |
 
-Sipas muajve (fillestari): shkurt +27.2R, mars +26.8R, prill +28.0R, maj +22.3R, qershor +7.1R,
-korrik −3.9R, gusht +23.7R, shtator +19.1R. 7 nga 8 muaj fitimprurës; muaji më i keq −3.9R.
-Versioni i mëparshëm fitonte më shumë në qershor–korrik, por kishte majin −9.3R dhe varej nga pak muaj të mirë.
+Sipas muajve (fillestari): shkurt +15.5R, mars +26.8R, prill +30.9R, maj +20.7R, qershor +11.2R,
+korrik +4.0R, gusht +26.8R, shtator +14.5R. **Të 8 muajt fitimprurës.**
 
-8 muaj, sniper: 456 trade, 83 fitime, 146 break-even, 227 humbje; trade-i më i mirë +28.4R.
+8 muaj, sniper: 471 trade, 89 fitime, 149 break-even, 233 humbje; trade-i më i mirë +27.5R.
 
 Çfarë tregon kjo:
 - Boti mbetet fitimprurës në muajt që s'i ka parë, por **më pak** se në muajt ku u ndërtua.
   Prit rezultate më afër shkurt–majit sesa qershor–shtatorit.
 - **Trailing stop-i është pjesa që funksionon vërtet**: pa të, çdo version humbet jashtë mostrës.
-- Drawdown-i max në 8 muaj ishte **19.4R**. Me 0.5% rrezik kjo është rreth −10% nga maja e llogarisë.
+- Drawdown-i max në 8 muaj ishte **21.4R**. Me 0.5% rrezik kjo është rreth −11% nga maja e llogarisë.
   Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
 - Rezultatet e kaluara nuk garantojnë të ardhmen.
 
@@ -185,6 +186,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `TREND_DAY_ADR` | `0.7` | çmimi ≥ kaq × ADR larg hapjes së ditës → ditë trendi në atë moment (`0` = joaktiv) |
 | `EARLY_TREND_ADR` | `0` | 8 orët e para ≥ kaq × ADR → ditë trendi (joaktiv; humbi jashtë mostrës) |
 | `EFF_ROT` | `0.15` | eficienca e ditës pas 6 orëve < kaq → ditë rotacioni (`0` = joaktiv) |
+| `CLOSE_FRIDAY_UTC` | `19` | të premten në këtë orë UTC mbyll gjithçka, pa trade deri të hënën (`-1` = joaktiv) |
 | `STICKY_TREND` | `true` | trade-i që njihet si trend mban trailing-un e gjerë deri në mbyllje |
 | `ROT_DAY_ADR` | `0.2` | 8 orët e para < kaq × ADR → ditë rotacioni (`0` = joaktiv) |
 | `ROT_TP_ADR` | `0.3` | TP në ditët e rotacionit (× ADR) |
