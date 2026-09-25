@@ -132,6 +132,29 @@ Backtest-in mund ta rilidhësh vetë: `python backtest.py 120`
 >
 > ⚠️ Tokeni `Bearer` jep akses tregtimi në llogarinë tënde. Mos e shkruaj kurrë në kod ose në GitHub, vetëm te Railway → Variables.
 
+### Njoftimet në Telegram
+
+Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
+
+| Mesazhi | Kur |
+|---|---|
+| 🟢 Gold Sniper u nis | pas çdo nisjeje/rinisjeje në Railway |
+| 🎯 BUY / SELL | hapet një trade (çmimi, SL, TP ose trailing, tipi i ditës) |
+| 🔒 SL në hyrje | trade-i s'mund të humbasë më |
+| 📈 Fitim i siguruar +XR | SL-ja ngjitet çdo +2R |
+| ✅ / ❌ U mbyll | rezultati në R dhe në EUR, balanca e re |
+| 📊 Përmbledhja e ditës | në fund të çdo dite me trade |
+| ⚠️ / 🛑 | cTrader s'përgjigjet > 5 min, SL s'u vendos, u arrit humbja max ditore |
+
+Shkruaji botit **/status** në Telegram: të tregon balancën, pozicionin e hapur dhe tipin e ditës.
+Komandat vetëm lexojnë; nga Telegram-i nuk mund të hapet ose mbyllet asnjë trade,
+dhe boti u përgjigjet vetëm mesazheve nga chat-i yt.
+
+Vendosja:
+1. Në Telegram hap botin tënd dhe shtyp **Start** (një bot s'mund të të shkruajë para kësaj).
+2. Railway → **Variables** → shto `TELEGRAM_TOKEN` (tokeni nga @BotFather) dhe `TELEGRAM_CHAT_ID`.
+3. Railway e rinis botin; brenda pak sekondash duhet të vijë mesazhi 🟢 Gold Sniper u nis.
+
 ### Trade-i i parë
 
 Kodi nuk është provuar ende me një urdhër të vërtetë. Kur boti hap trade-in e parë, shiko log-et:
@@ -153,6 +176,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `TREND_ENTRIES` | `true` | tregto edhe me trendin në ditët me një drejtim (`false` = vetëm maja/funde) |
 | `PULL_MIN_ADR` / `PULL_MAX_ADR` | `0.10` / `0.35` | madhësia e pullback-ut në ditët me trend (× ADR) |
 | `ADR_DAYS` | `10` | sa ditë për mesataren e lëvizjes ditore |
+| `TELEGRAM_TOKEN` | – | tokeni i botit tënd të Telegram-it (nga @BotFather) |
+| `TELEGRAM_CHAT_ID` | – | ID e chat-it ku vijnë njoftimet |
 | `DRY_RUN` | `false` | `true` = vetëm sinjale në log, pa trade |
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |

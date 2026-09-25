@@ -34,6 +34,8 @@ class Config:
     lot_size: int = 100           # 1 lot ari = 100 oz -> volume = lote * 10_000
 
     dry_run: bool = False
+    telegram_token: str = ""
+    telegram_chat_id: str = ""
     label: str = "GoldSniper"
     risk_percent: float = 0.5
     fixed_lots: float = 0.0       # >0 -> perdor lot fiks ne vend te % rrezikut
@@ -106,6 +108,8 @@ class Config:
             bearer=_env(["CTRADER_BEARER", "Bearer", "BEARER"], ""),
             symbol_id=_i("SYMBOL_ID", 41),
             dry_run=_b("DRY_RUN", False),
+            telegram_token=_env(["TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", "BOT_TOKEN"], ""),
+            telegram_chat_id=_env(["TELEGRAM_CHAT_ID", "CHAT_ID"], ""),
             label=_env("LABEL", "GoldSniper"),
             risk_percent=_f("RISK_PERCENT", 0.5),
             fixed_lots=_f("FIXED_LOTS", 0),
