@@ -32,25 +32,32 @@ refuzohet, me SL mbi rikthimin. Në ditët me trend lart, blen rënien e vogël.
 me trendin, jo vetëm kundër tij.
 
 - **SL**: pak mbi majë / nën fund (+0.3 × ATR). Min 3$, max 25$ (nëse del më i madh, trade-i anulohet).
-- **TP**: 3 × SL (Risk:Reward 1:3).
-- **Break-even**: kur fitimi arrin 1 × SL, SL-ja zhvendoset në hyrje.
+- **Dalja si snajper (trailing stop)**: pa TP fiks. Kur fitimi arrin 1 × SL, SL-ja shkon në hyrje
+  (break-even). Pastaj SL-ja ndjek çmimin më të mirë me distancë **0.4 × ADR (~40$)**, pra trade-i
+  mbyllet vetëm kur lëkundja e ditës kthehet vërtet. Kështu boti e kalëron lëvizjen e plotë,
+  si 19 gushti (+203$) ose 2 shtatori.
 - Vetëm 1 pozicion njëherësh, max 4 trade në ditë, stop nëse humbja ditore arrin 3%.
 - Tregton 01:00–20:00 UTC (= 04:00–23:00 në orën e grafikut IC Markets).
 
 ### Rezultati në 120 ditët e fundit (të dhëna reale M15 nga llogaria jote)
 
-| | **`MODE=sniper`** (fillestar) | sniper pa trend (`TREND_ENTRIES=false`) | `MODE=klasik` |
-|---|---|---|---|
-| Trade në ditë (mesatarisht) | **3.4** | 2.9 | 2.4 |
-| Ditë me ≥ 2 trade | **91%** | 84% | 70% |
-| Ditë pa asnjë trade (nga 87) | **3** | 5 | 8 |
-| Fitime (+3R) / Break-even / Humbje (−1R) | 63 / 95 / 138 | 51 / 84 / 119 | 43 / 66 / 102 |
-| Totali | **+52.9R** | +35.6R | +28.4R |
-| 60 ditët e para / 60 të fundit | **+24.8R / +34.1R** | +18.8R / +22.9R | +11.7R / +15.7R |
-| Drawdown max | 17.8R | 13.8R | 11.9R |
-| Seria më e gjatë e humbjeve | 9 | 8 | 8 |
+| | **Sniper (fillestar): trailing 0.4 × ADR** | Sniper me TP fiks 1:3 (`TRAIL_ADR=0`) |
+|---|---|---|
+| Trade në ditë (mesatarisht) | 2.6 | 3.4 |
+| Ditë me ≥ 2 trade | 75% | 91% |
+| Totali | **+61.2R** | +52.9R |
+| 60 ditët e para / 60 të fundit | +38.6R / +12.9R | +24.8R / +34.1R |
+| Drawdown max | **14.8R** | 17.8R |
+| Trade-i më i mirë | **+18.6R** | +3R |
 
-Me 0.5% rrezik për trade, `sniper` del rreth +26% në 120 ditë, me drawdown max rreth 9%.
+Me 0.5% rrezik për trade, fillestari del rreth +30% në 120 ditë, me drawdown max rreth 7.5%.
+Rezultati ndryshon ±10R sipas dritares së saktë të 120 ditëve (p.sh. +57R me të dhënat e sotme),
+por trailing ka dalë gjithmonë më mirë se TP fiks.
+
+Me trailing boti bën më pak trade, sepse mban një pozicion gjatë një lëvizjeje të madhe.
+Provova të lejoj një pozicion të dytë kur i pari është pa rrezik (`MAX_POSITIONS=2`):
+3.6 trade/ditë, por vetëm +43R dhe drawdown 25R. Prandaj fillestari mbetet 1 pozicion.
+Provova edhe mbylljen dhe kthimin e pozicionit kur vjen sinjal i kundërt: e ul fitimin (+19R deri +63R).
 
 Nga 27 majat/fundet që shënove, **19 janë saktësisht majat/fundet që gjen boti** në lëkundjet e ditës,
 dhe në 14 prej tyre boti hyn direkt në trade. Të tjerat i humb kur lëvizja para tyre ishte pak nën 0.45 × ADR
@@ -109,7 +116,10 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |
 | `MAX_LOTS` | `1.0` | loti maksimal për trade (mbrojtje) |
-| `RR` | `3.0` | TP = SL × RR |
+| `TRAIL_ADR` | `0.4` | distanca e trailing stop (× ADR); `0` = TP fiks me `RR` |
+| `TRAIL_START_R` | `1.0` | trailing fillon pasi fitimi arrin kaq R |
+| `MAX_POSITIONS` | `1` | `2` = pozicion i dytë kur i pari është pa rrezik (në backtest ul fitimin) |
+| `RR` | `3.0` | TP = SL × RR (vetëm kur `TRAIL_ADR=0`) |
 | `BREAK_EVEN_R` | `1.0` | SL në hyrje pas kaq R fitim (`0` = joaktiv) |
 | `MAX_DAILY_LOSS_PCT` | `3.0` | stop për sot pas kaq % humbje |
 | `MAX_TRADES_PER_DAY` | `4` | trade maksimale në ditë |

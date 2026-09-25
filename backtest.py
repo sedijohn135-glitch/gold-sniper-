@@ -17,7 +17,7 @@ def run(bars, cfg: Config, verbose=True):
     p = cfg.strategy
     ind = prepare(bars, p)
     trades = []
-    pos = None
+    open_pos = []
     last_entry_i = -10_000
     per_day = {}
     spread = cfg.backtest_spread
@@ -25,30 +25,36 @@ def run(bars, cfg: Config, verbose=True):
     for i in range(len(bars)):
         b = bars[i]
         # ---- menaxho pozicionin e hapur ne qirin i ----
-        if pos:
-            side, entry, sl, tp, risk, be_done = pos["side"], pos["entry"], pos["sl"], pos["tp"], pos["risk"], pos["be"]
-            if side == "BUY":
-                hit_sl, hit_tp = b.l <= sl, b.h >= tp
-                fav = b.h - entry
-            else:
-                hit_sl, hit_tp = b.h + spread >= sl, b.l + spread <= tp
-                fav = entry - (b.l + spread)
+        for pos in list(open_pos):
+            buy = pos["side"] == "BUY"
+            entry, risk, tp = pos["entry"], pos["risk"], pos["tp"]
+            lo, hi = (b.l, b.h) if buy else (b.l + spread, b.h + spread)
             exit_px = None
-            if hit_sl:              # konservative: SL para TP ne te njejtin qiri
-                exit_px = sl
-            elif hit_tp:
+            if (buy and lo <= pos["sl"]) or (not buy and hi >= pos["sl"]):
+                exit_px = pos["sl"]      # konservative: SL para TP ne te njejtin qiri
+            elif tp is not None and ((buy and hi >= tp) or (not buy and lo <= tp)):
                 exit_px = tp
             if exit_px is not None:
-                r = ((exit_px - entry) if side == "BUY" else (entry - exit_px)) / risk
-                pos["exit"], pos["r"], pos["exit_t"] = exit_px, r, b.t
+                pos["exit"], pos["exit_t"] = exit_px, b.t
+                pos["r"] = ((exit_px - entry) if buy else (entry - exit_px)) / risk
                 trades.append(pos)
-                pos = None
-            elif cfg.break_even_r > 0 and not be_done and fav >= risk * cfg.break_even_r:
-                pos["sl"] = entry + (spread if side == "BUY" else -spread)
-                pos["be"] = True
+                open_pos.remove(pos)
+            else:
+                pos["best"] = max(pos["best"], hi) if buy else min(pos["best"], lo)
+                fav = pos["best"] - entry if buy else entry - pos["best"]
+                new_sl = pos["sl"]
+                if cfg.break_even_r > 0 and fav >= risk * cfg.break_even_r:
+                    be = entry + spread if buy else entry - spread
+                    new_sl = max(new_sl, be) if buy else min(new_sl, be)
+                if cfg.trailing and fav >= risk * cfg.trail_start_r and ind["adr"][i] == ind["adr"][i]:
+                    d = cfg.trail_adr * ind["adr"][i]
+                    new_sl = max(new_sl, pos["best"] - d) if buy else min(new_sl, pos["best"] + d)
+                pos["sl"] = new_sl
 
         # ---- sinjal ne mbyllje te qirit i -> hyrje ne hapje te i+1 ----
-        if pos is None and i + 1 < len(bars) and i - last_entry_i >= cfg.cooldown_bars:
+        # pozicion i ri: kur s'ka asnje, ose kur te gjithe te hapurit jane pa rrezik (SL >= hyrja)
+        free = all((q["sl"] >= q["entry"]) if q["side"] == "BUY" else (q["sl"] <= q["entry"]) for q in open_pos)
+        if len(open_pos) < cfg.max_positions and free and i + 1 < len(bars) and i - last_entry_i >= cfg.cooldown_bars:
             nt = datetime.fromtimestamp(bars[i + 1].t / 1000, timezone.utc)
             if not cfg.in_session(nt.hour) or per_day.get(nt.date(), 0) >= cfg.max_trades_per_day:
                 continue
@@ -62,9 +68,9 @@ def run(bars, cfg: Config, verbose=True):
             if risk > cfg.max_sl:
                 continue
             sl = entry - risk if sig.side == "BUY" else entry + risk
-            tp = entry + risk * cfg.rr if sig.side == "BUY" else entry - risk * cfg.rr
-            pos = {"side": sig.side, "entry": entry, "sl": sl, "tp": tp, "risk": risk,
-                   "be": False, "t": nb.t, "extreme": sig.extreme}
+            tp = None if cfg.trailing else (entry + risk * cfg.rr if sig.side == "BUY" else entry - risk * cfg.rr)
+            open_pos.append({"side": sig.side, "entry": entry, "sl": sl, "tp": tp, "risk": risk,
+                             "best": entry, "t": nb.t, "extreme": sig.extreme})
             last_entry_i = i
             per_day[nt.date()] = per_day.get(nt.date(), 0) + 1
 

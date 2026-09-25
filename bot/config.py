@@ -41,6 +41,9 @@ class Config:
     min_lots: float = 0.01
     rr: float = 3.0
     break_even_r: float = 1.0
+    trail_adr: float = 0.4        # trailing stop: distanca x ADR (0 = TP fiks me RR)
+    trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
+    max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
     max_daily_loss_pct: float = 3.0
     max_trades_per_day: int = 4
     min_sl: float = 3.0           # $ cmim
@@ -52,6 +55,10 @@ class Config:
     poll_seconds: int = 15
     backtest_spread: float = 0.2
     strategy: Params = field(default_factory=Params)
+
+    @property
+    def trailing(self) -> bool:
+        return self.trail_adr > 0 and self.strategy.mode == "sniper"
 
     def in_session(self, hour: int) -> bool:
         if self.start_hour_utc <= self.end_hour_utc:
@@ -98,6 +105,9 @@ class Config:
             max_lots=_f("MAX_LOTS", 1.0),
             rr=_f("RR", 3.0),
             break_even_r=_f("BREAK_EVEN_R", 1.0),
+            trail_adr=_f("TRAIL_ADR", 0.4),
+            trail_start_r=_f("TRAIL_START_R", 1.0),
+            max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),
             max_trades_per_day=_i("MAX_TRADES_PER_DAY", 4),
             min_sl=_f("MIN_SL", 3.0),

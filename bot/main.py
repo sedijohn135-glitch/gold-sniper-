@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .mcp_client import PRICE_SCALE, McpClient, McpError
-from .strategy import detect
+from .strategy import detect, prepare
 
 log = logging.getLogger("gold-sniper")
 RECENT_LOGS = deque(maxlen=100)
@@ -80,7 +80,8 @@ class GoldSniper:
         self.last_bar_t = None
         self.last_entry_bar_t = 0
         self.my_position_ids = set()
-        self.plans = {}  # positionId -> {"sl":..., "tp":...}
+        self.plans = {}  # positionId -> {"sl", "tp" (None me trailing), "risk", "best"}
+        self.adr = None  # ADR e fundit (per trailing stop)
         self.last_signal = None
         self.started = utc()
 
@@ -111,8 +112,9 @@ class GoldSniper:
                      f"PO (pullback {s.pull_min_adr:.2f}-{s.pull_max_adr:.2f} x ADR)" if s.trend_entries else "JO")
         else:
             log.info("Modi KLASIK: lookback %d | RSI %g/%g", s.lookback, s.rsi_ob, s.rsi_os)
-        log.info("Rreziku %.2f%% | RR 1:%.1f | BE %.1fR | ora %d-%d UTC",
-                 c.risk_percent, c.rr, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
+        exit_txt = f"pa TP, trailing {c.trail_adr:.2f} x ADR pas {c.trail_start_r:.1f}R" if c.trailing else f"TP 1:{c.rr:.1f}"
+        log.info("Rreziku %.2f%% | Dalja: %s | BE %.1fR | ora %d-%d UTC",
+                 c.risk_percent, exit_txt, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
 
     def update_conversion(self):
         """Sa vlen 1 USD ne valuten e llogarise (per llogaritjen e lotit)."""
@@ -194,6 +196,9 @@ class GoldSniper:
         if not bars:
             return
         newest = bars[-1]
+        ind = prepare(bars, self.cfg.strategy)
+        if "adr" in ind and ind["adr"][-1] == ind["adr"][-1]:
+            self.adr = ind["adr"][-1]
         if self.last_bar_t is None:
             self.last_bar_t = newest.t
             log.info("Boti filloi. Qiri i fundit i mbyllur: %s", utc(newest.t))
@@ -201,13 +206,13 @@ class GoldSniper:
         if newest.t <= self.last_bar_t:
             return
         self.last_bar_t = newest.t
-        self.on_bar(bars, positions)
+        self.on_bar(bars, positions, ind)
 
     # ------------------------------------------------------------ signals
-    def on_bar(self, bars, positions):
+    def on_bar(self, bars, positions, ind):
         c = self.cfg
         i = len(bars) - 1
-        sig = detect(bars, i, c.strategy)
+        sig = detect(bars, i, c.strategy, ind)
         if not sig:
             return
         if sig.kind == "trend":
@@ -223,7 +228,11 @@ class GoldSniper:
         if self.trades_today >= c.max_trades_per_day:
             return log.info("  injoruar: %d trade sot (max)", self.trades_today)
         if positions:
-            return log.info("  injoruar: ka pozicion te hapur")
+            def risk_free(q):
+                e, sl = to_price(find_key(q, "price", "entryPrice", "openPrice")), to_price(find_key(q, "stopLoss"))
+                return e is not None and sl is not None and (sl >= e if side_of(q) == "BUY" else sl <= e)
+            if len(positions) >= c.max_positions or not all(risk_free(q) for q in positions):
+                return log.info("  injoruar: ka pozicion te hapur")
         if (bars[i].t - self.last_entry_bar_t) / M15_MS < c.cooldown_bars:
             return log.info("  injoruar: pritje pas trade-it te fundit")
         if not c.in_session(hour):
@@ -277,15 +286,16 @@ class GoldSniper:
         args = {
             "symbolId": c.symbol_id, "orderType": "MARKET", "tradeSide": side, "volume": volume,
             "relativeStopLoss": int(round(risk * PRICE_SCALE)),
-            "relativeTakeProfit": int(round(risk * c.rr * PRICE_SCALE)),
             "label": c.label, "comment": c.label,
         }
+        if not c.trailing:
+            args["relativeTakeProfit"] = int(round(risk * c.rr * PRICE_SCALE))
         pid, rejected = self.send_market(args, before)
         if pid is None and rejected:
             # serveri e refuzoi -> provo pa SL/TP relative, SL vendoset menjehere me amend
             log.warning("  po provohet urdhri pa SL/TP relative")
             args.pop("relativeStopLoss")
-            args.pop("relativeTakeProfit")
+            args.pop("relativeTakeProfit", None)
             pid, _ = self.send_market(args, before)
         if pid is None:
             log.error("  pozicioni nuk u hap")
@@ -301,9 +311,10 @@ class GoldSniper:
             details = {}
         entry = to_price(find_key(details, "price", "entryPrice", "openPrice")) or ref_price
         sl = entry - risk if side == "BUY" else entry + risk
-        tp = entry + risk * c.rr if side == "BUY" else entry - risk * c.rr
-        self.plans[pid] = {"sl": round(sl, 2), "tp": round(tp, 2)}
-        log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | TP %.2f", pid, entry, sl, tp)
+        tp = None if c.trailing else round(entry + risk * c.rr if side == "BUY" else entry - risk * c.rr, 2)
+        self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry}
+        log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
+                 f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
         self.protect(pid, details)
 
     def send_market(self, args, before):
@@ -331,16 +342,20 @@ class GoldSniper:
         plan = self.plans.get(pid)
         cur_sl = to_price(find_key(pos, "stopLoss"))
         cur_tp = to_price(find_key(pos, "takeProfit"))
-        if plan and cur_sl is not None and abs(cur_sl - plan["sl"]) < 0.05 and \
-                cur_tp is not None and abs(cur_tp - plan["tp"]) < 0.05:
+        tp_ok = cur_tp is None if plan and plan["tp"] is None else \
+            (cur_tp is not None and plan is not None and abs(cur_tp - plan["tp"]) < 0.05)
+        if plan and cur_sl is not None and abs(cur_sl - plan["sl"]) < 0.05 and tp_ok:
             plan["ok"] = True
             return
         if plan:
+            args = {"positionId": pid, "stopLoss": plan["sl"]}
+            if plan["tp"] is not None:
+                args["takeProfit"] = plan["tp"]
             try:
-                self.client.call("amend_position", {"positionId": pid, "stopLoss": plan["sl"],
-                                                     "takeProfit": plan["tp"]})
+                self.client.call("amend_position", args)
                 plan["ok"] = True
-                log.info("  SL/TP u vendosen per %s: SL %.2f TP %.2f", pid, plan["sl"], plan["tp"])
+                log.info("  SL/TP u vendosen per %s: SL %.2f %s", pid, plan["sl"],
+                         f"TP {plan['tp']:.2f}" if plan["tp"] else "(pa TP, trailing)")
                 return
             except McpError as e:
                 log.error("  amend_position deshtoi per %s: %s", pid, e)
@@ -365,28 +380,43 @@ class GoldSniper:
             if (plan is not None and not plan.get("ok")) or find_key(pos, "stopLoss") is None:
                 self.protect(pid, pos)
                 continue
-            self.break_even(pid, pos)
+            self.manage_stop(pid, pos, plan)
 
-    def break_even(self, pid, pos):
+    def manage_stop(self, pid, pos, plan):
+        """Break-even dhe trailing stop: SL ndjek cmimin me distance trail_adr x ADR
+        pasi fitimi arrin trail_start_r x rrezikun fillestar."""
         c = self.cfg
-        if c.break_even_r <= 0:
-            return
         entry = to_price(find_key(pos, "price", "entryPrice", "openPrice"))
         sl = to_price(find_key(pos, "stopLoss"))
         if entry is None or sl is None:
             return
-        side = side_of(pos)
-        risk = entry - sl if side == "BUY" else sl - entry
-        if risk <= 0:  # tashme ne break-even
-            return
+        buy = side_of(pos) == "BUY"
+        if plan is None:
+            # pozicion nga para rinisjes: rreziku = distanca e SL (nese ende ne humbje)
+            risk = entry - sl if buy else sl - entry
+            if risk <= 0:
+                risk = abs(entry - sl) or c.min_sl
+            plan = self.plans[pid] = {"sl": sl, "tp": None, "risk": risk, "best": entry, "ok": True}
         bid, ask = self.spot()
-        price = bid if side == "BUY" else ask
-        profit = price - entry if side == "BUY" else entry - price
-        if profit >= risk * c.break_even_r:
+        price = bid if buy else ask
+        plan["best"] = max(plan["best"], price) if buy else min(plan["best"], price)
+        fav = plan["best"] - entry if buy else entry - plan["best"]
+        risk = plan["risk"]
+
+        new_sl = sl
+        if c.break_even_r > 0 and fav >= risk * c.break_even_r:
             buf = max(ask - bid, 0.05)
-            new_sl = round(entry + buf if side == "BUY" else entry - buf, 2)
+            be = entry + buf if buy else entry - buf
+            new_sl = max(new_sl, be) if buy else min(new_sl, be)
+        if c.trailing and self.adr and fav >= risk * c.trail_start_r:
+            trail = plan["best"] - c.trail_adr * self.adr if buy else plan["best"] + c.trail_adr * self.adr
+            new_sl = max(new_sl, trail) if buy else min(new_sl, trail)
+        new_sl = round(new_sl, 2)
+        # levize vetem kur SL permiresohet te pakten 0.5$ (pa spam urdhrash)
+        if (new_sl - sl if buy else sl - new_sl) >= 0.5:
             self.client.call("amend_position", {"positionId": pid, "stopLoss": new_sl})
-            log.info("Break-even: SL i %s u zhvendos ne %.2f", pid, new_sl)
+            plan["sl"] = new_sl
+            log.info("SL i %s u zhvendos ne %.2f (fitimi max %.2f$ = %.1fR)", pid, new_sl, fav, fav / risk)
 
     def check_daily_loss(self, positions):
         if self.daily_limit_hit or not self.day_start_balance:
