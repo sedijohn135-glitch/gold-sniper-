@@ -106,8 +106,9 @@ class GoldSniper:
         c = self.cfg
         s = c.strategy
         if s.mode == "sniper":
-            log.info("Modi SNIPER: lekundje %.2f x ADR | leg min %.2f x ADR | konfirmim %d qirinj",
-                     s.swing_rev, s.leg_min_adr, s.confirm_bars)
+            log.info("Modi SNIPER: lekundje %.2f x ADR | leg min %.2f x ADR | konfirmim %d qirinj | trend %s",
+                     s.swing_rev, s.leg_min_adr, s.confirm_bars,
+                     f"PO (pullback {s.pull_min_adr:.2f}-{s.pull_max_adr:.2f} x ADR)" if s.trend_entries else "JO")
         else:
             log.info("Modi KLASIK: lookback %d | RSI %g/%g", s.lookback, s.rsi_ob, s.rsi_os)
         log.info("Rreziku %.2f%% | RR 1:%.1f | BE %.1fR | ora %d-%d UTC",
@@ -209,7 +210,10 @@ class GoldSniper:
         sig = detect(bars, i, c.strategy)
         if not sig:
             return
-        kind = "MAJE -> SELL" if sig.side == "SELL" else "FUND -> BUY"
+        if sig.kind == "trend":
+            kind = "TREND POSHTE -> SELL pullback" if sig.side == "SELL" else "TREND LART -> BUY pullback"
+        else:
+            kind = "MAJE -> SELL" if sig.side == "SELL" else "FUND -> BUY"
         self.last_signal = {"time": utc(bars[i].t), "side": sig.side, "extreme": sig.extreme}
         log.info("SINJAL %s | ekstremi %.2f | qiri %s", kind, sig.extreme, utc(bars[i].t))
 

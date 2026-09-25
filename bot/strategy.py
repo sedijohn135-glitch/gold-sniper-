@@ -8,6 +8,10 @@ MODE=sniper (fillestar) - lekundjet e dites:
   Refuzimi: bisht i gjate, qiri i forte kthimi, ose nje nga 2 qirinjte pas
   ekstremit mbyllet pertej trupit te tij.
 
+  Ditet me trend (vetem SELL ose vetem BUY): pasi cmimi ka rene >= 0.45 x ADR
+  nga maja dhe s'ka kthim te madh, boti shet rikthimin e vogel (pullback
+  10-35% e ADR) kur refuzohet. E kunderta ne ditet me trend lart.
+
 MODE=klasik - modeli i vjeter:
   * MAJE -> SELL: qiri ben high me te larte se N qirinjte e meparshem
     (fshin likuiditetin), pas nje ngritjeje te madhe, dhe refuzohet:
@@ -48,6 +52,9 @@ class Params:
     swing_rev: float = 0.4         # kthimi qe konfirmon nje maje/fund (x ADR)
     leg_min_adr: float = 0.45      # leg-u min para majes/fundit (x ADR)
     confirm_bars: int = 2          # sa qirinj pas ekstremit pranohet konfirmimi
+    trend_entries: bool = True     # tregto edhe me trendin (pullback) ne ditet me nje drejtim
+    pull_min_adr: float = 0.10     # pullback-u min (x ADR)
+    pull_max_adr: float = 0.35     # pullback-u max (x ADR); me i madh = kthim, jo pullback
 
 
 @dataclass
@@ -57,6 +64,7 @@ class Signal:
     extreme_index: int
     stop_loss: float    # cmimi i SL (para kontrollit min/max)
     atr: float
+    kind: str = "kthim"  # "kthim" = maje/fund i dites, "trend" = pullback ne diten me trend
 
 
 def atr_series(bars, period):
@@ -246,6 +254,52 @@ def detect_swing(bars, i, p: Params, atr, adr, pivots):
     return None
 
 
+def detect_trend(bars, i, p: Params, atr, adr, pivots):
+    """Dite me trend: pas renies >= leg_min x ADR nga maja e fundit, shit
+    rikthimin (10-35% e ADR) kur refuzohet. E kunderta pas ngritjes."""
+    a, day_range, piv = atr[i], adr[i], pivots[i]
+    if piv is None or a != a or day_range != day_range:
+        return None
+    start = piv[2] + 1
+    if start > i - 2:
+        return None
+    if piv[0] == "H":
+        lo_j = min(range(start, i + 1), key=lambda j: bars[j].l)
+        if lo_j >= i or piv[1] - bars[lo_j].l < p.leg_min_adr * day_range:
+            return None
+        k = max(range(lo_j + 1, i + 1), key=lambda j: bars[j].h)
+        pull = bars[k].h - bars[lo_j].l
+        if not p.pull_min_adr * day_range <= pull <= p.pull_max_adr * day_range or k < i - p.confirm_bars:
+            return None
+        bk = bars[k]
+        body_low = min(bk.o, bk.c)
+        if k == i:
+            rejected = _bearish_rejection(bk, p)
+        else:
+            rejected = bars[i].c < bars[i].o and bars[i].c < body_low and \
+                all(b.c >= body_low for b in bars[k + 1:i])
+        if rejected:
+            return Signal("SELL", bk.h, k, bk.h + p.sl_buffer_atr * a, a, "trend")
+    else:
+        hi_j = max(range(start, i + 1), key=lambda j: bars[j].h)
+        if hi_j >= i or bars[hi_j].h - piv[1] < p.leg_min_adr * day_range:
+            return None
+        k = min(range(hi_j + 1, i + 1), key=lambda j: bars[j].l)
+        pull = bars[hi_j].h - bars[k].l
+        if not p.pull_min_adr * day_range <= pull <= p.pull_max_adr * day_range or k < i - p.confirm_bars:
+            return None
+        bk = bars[k]
+        body_high = max(bk.o, bk.c)
+        if k == i:
+            rejected = _bullish_rejection(bk, p)
+        else:
+            rejected = bars[i].c > bars[i].o and bars[i].c > body_high and \
+                all(b.c <= body_high for b in bars[k + 1:i])
+        if rejected:
+            return Signal("BUY", bk.l, k, bk.l - p.sl_buffer_atr * a, a, "trend")
+    return None
+
+
 def prepare(bars, p: Params):
     """Llogarit treguesit nje here per gjithe listen e qirinjve."""
     atr = atr_series(bars, p.atr_period)
@@ -260,5 +314,8 @@ def detect(bars, i, p: Params, ind=None):
     """Kontrollon qirin e mbyllur `i` per sinjal BUY/SELL."""
     ind = ind or prepare(bars, p)
     if p.mode == "sniper":
-        return detect_swing(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
+        sig = detect_swing(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
+        if sig is None and p.trend_entries:
+            sig = detect_trend(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
+        return sig
     return detect_classic(bars, i, p, ind["atr"], ind["rsi"])

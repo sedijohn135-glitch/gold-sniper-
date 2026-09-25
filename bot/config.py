@@ -83,6 +83,9 @@ class Config:
             swing_rev=_f("SWING_REV", 0.4),
             leg_min_adr=_f("LEG_MIN_ADR", 0.45),
             confirm_bars=_i("CONFIRM_BARS", 2),
+            trend_entries=_b("TREND_ENTRIES", True),
+            pull_min_adr=_f("PULL_MIN_ADR", 0.10),
+            pull_max_adr=_f("PULL_MAX_ADR", 0.35),
         )
         cfg = cls(
             url=_env(["CTRADER_MCP_URL", "URL"], cls.url),
