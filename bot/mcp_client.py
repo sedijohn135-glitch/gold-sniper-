@@ -11,6 +11,7 @@ import urllib.request
 
 log = logging.getLogger("mcp")
 
+MAX_NOT_FOUND = 12  # sa here riprovohet nje kerkese qe merr 404
 PRICE_SCALE = 100_000  # cmimet nga get_trendbars / get_spot_prices jane ne 1/100000
 
 
@@ -58,18 +59,27 @@ class McpClient:
                 "clientInfo": {"name": "gold-sniper", "version": "1.0"},
             },
         })
-        self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        try:
+            self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        except urllib.error.HTTPError:
+            pass  # backend-i tjeter s'e njeh ende sesionin; thirrjet e ardhshme riprovojne
         log.info("U lidh me cTrader MCP (sesioni %s)", (self.session_id or "?")[:8])
 
     # ------------------------------------------------------------ tools
     def call(self, name: str, args: dict | None = None, retries: int = 3):
         """Therret nje tool dhe kthen JSON-in e rezultatit.
 
-        Per veprimet qe ndryshojne llogarine (create_order etj.) perdor retries=1
-        qe te mos dergohet i njejti urdher dy here.
+        Serveri ka disa backend-e dhe nje sesion i ri nuk njihet menjehere nga
+        te gjithe: kerkesa merr 404 dhe e njejta kerkesa kalon pas pak.
+        404 do te thote qe serveri s'e ka ekzekutuar kerkesen, prandaj
+        riprovohet gjithmone (edhe per urdhrat). `retries` vlen vetem per
+        gabimet e rrjetit; per create_order jepet retries=1 qe te mos
+        dergohet i njejti urdher dy here.
         """
         last_err = None
-        for attempt in range(retries):
+        net_fails = 0
+        not_found = 0
+        while True:
             try:
                 if not self.session_id:
                     self.connect()
@@ -92,14 +102,22 @@ class McpClient:
                     return {"text": text}
             except urllib.error.HTTPError as e:
                 last_err = e
-                # sesioni ka skaduar -> rilidhu
-                if e.code in (400, 404):
+                if e.code not in (400, 404):
+                    raise McpError(f"{name}: HTTP {e.code}")
+                not_found += 1
+                if not_found >= MAX_NOT_FOUND:
+                    break
+                # 400 = sesion i pavlefshem; 404 shpesh te njepasnjeshem -> sesion i ri
+                if e.code == 400 or not_found % 4 == 0:
                     self.session_id = None
-                log.warning("%s: HTTP %s (prova %d/%d)", name, e.code, attempt + 1, retries)
+                log.debug("%s: HTTP %s, riprovim %d", name, e.code, not_found)
+                time.sleep(min(0.5 * not_found, 3))
             except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
                 last_err = e
                 self.session_id = None
-                log.warning("%s: rrjeti deshtoi: %s (prova %d/%d)", name, e, attempt + 1, retries)
-            if attempt + 1 < retries:
-                time.sleep(2 * (attempt + 1))
+                net_fails += 1
+                log.warning("%s: rrjeti deshtoi: %s (prova %d/%d)", name, e, net_fails, retries)
+                if net_fails >= retries:
+                    break
+                time.sleep(2 * net_fails)
         raise McpError(f"{name} deshtoi: {last_err}")

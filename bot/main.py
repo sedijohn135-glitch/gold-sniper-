@@ -7,6 +7,7 @@ Nuk ka nevoje per kompjuter apo per aplikacionin cTrader.
 import json
 import logging
 import os
+import sys
 import threading
 import time
 from collections import deque
@@ -151,7 +152,15 @@ class GoldSniper:
 
     # ------------------------------------------------------------ loop
     def run(self):
-        self.setup()
+        wait = 5
+        while True:
+            try:
+                self.setup()
+                break
+            except McpError as e:
+                log.error("Nisja deshtoi: %s. Provohet perseri pas %ds", e, wait)
+                time.sleep(wait)
+                wait = min(wait * 2, 120)
         while True:
             try:
                 self.tick()
@@ -424,7 +433,7 @@ def start_status_server(bot: GoldSniper):
 
 def main():
     fmt = "%(asctime)s %(levelname)s %(message)s"
-    logging.basicConfig(level=logging.INFO, format=fmt)
+    logging.basicConfig(level=logging.INFO, format=fmt, stream=sys.stdout)  # Railway: stderr shfaqet si [error]
     ring = RingHandler()
     ring.setFormatter(logging.Formatter(fmt))
     logging.getLogger().addHandler(ring)
