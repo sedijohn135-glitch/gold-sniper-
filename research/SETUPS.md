@@ -14,6 +14,7 @@
 
 | 7 | **SBR/RBS me HTF:** support M15 i thyer, çmimi në supply H1, demand-i i fundit M5 thyhet. Retest + rejection M5 → sell, SL pak mbi SBR, TP demand M15 (origjina e rritjes) | `research/adaptive.py` | si rregull: −26R deri +8R; H1 fresh + thyerje M5 me TP origjinë: +122R deri +151R, DD 34–36R | kërkim; kap 24 shtatorin (+7.5R) |
 | 8 | **Boti adaptiv:** konteksti mund të jetë në H1 ose H4: zonë S/D, support, divergjencë AO ose QM | `research/adaptive.py` | 1008 kombinime: mban vetëm zona H1 fresh + thyerja M5; H4 dhe divergjencat HTF s'mbajnë | pjesa që mban është tashmë live (moduli 5) |
+| 9 | **Truri (sistem pikësh):** e detyrueshme thyerja e një zone S/D në M5/M15/M30 + të paktën një arsye HTF (SnD, SnR, SBR/RBS, trendline, QM, AO). Pastaj konfluencat LTF numërohen: sa më shumë, aq më i fortë setup-i | `research/brain.py` | numri i konfluencave s'rritet me fitimin; peshat e mësuara dështojnë 15/16 herë jashtë periudhës; **trendline + zonë HTF**: 23 trade +34R (DD 4R), por 3 trade japin 32R | kërkim; kandidat për t'u ri-testuar me të dhëna të reja |
 
 ## Shembulli 6 në detaje (4 gusht 2026)
 
@@ -45,3 +46,7 @@ ende s'është kthyer në rregull. Shkurt–maji humb në çdo variant.
 - **H1 është koha e lartë që funksionon.** Në këto 8 muaj, zonat H4 dhe divergjencat H1/H4 si kontekst
   s'dhanë avantazh të qëndrueshëm.
 - Retest-i i zonës së thyer (SBR/RBS) vetëm si trigger s'mjafton. Thyerja e strukturës M5 (me AO) është më e fortë.
+- **Cilësia e konfluencës ka rëndësi, jo numri.** Setup-et me 7 konfluenca s'fitojnë më shumë se ato me 2.
+  Konfluencat me vlerë: zona H1 fresh, trendline HTF te maja/fundi, AO kur maja bie në murin H1.
+- Një "tru" që mëson peshat e konfluencave nga e kaluara s'e parashikoi periudhën tjetër. Rregullat e thjeshta
+  dhe të qëndrueshme (modulet live) mbajnë më mirë se sistemet me shumë pjesë.
