@@ -38,6 +38,7 @@ class P:
     end_h: int = 20
     spread: float = 0.2
     close_line: bool = True     # vija nga mbylljet (si ne grafikun "line" te perdoruesit), jo nga wick-et
+    fresh: bool = True          # zona e thyer dhe zona e TP duhet te jene te paprekura (unmitigated)
 
 
 def run(m5, p: P):
@@ -103,7 +104,8 @@ def run(m5, p: P):
                     # zona perballe me e afert (supply mbi cmim per BUY)
                     want = "S" if buy else "D"
                     zs = [z for z in zones if z.kind == want and z.known <= t_close < z.dead and
-                          ((buy and z.lo > b.c) or (not buy and z.hi < b.c))]
+                          ((buy and z.lo > b.c) or (not buy and z.hi < b.c)) and
+                          (not p.fresh or z.first_touch > b.t)]
                     if zs:
                         L["touch"] = j
                         L["zone"] = min(zs, key=lambda z: z.lo) if buy else max(zs, key=lambda z: z.hi)
@@ -141,7 +143,8 @@ def run(m5, p: P):
                 continue
             want = "S" if buy else "D"
             tz = [z2 for z2 in zones if z2.kind == want and z2.known <= t_close < z2.dead and
-                  ((buy and z2.lo >= entry + p.min_rr * risk) or (not buy and z2.hi <= entry - p.min_rr * risk))]
+                  ((buy and z2.lo >= entry + p.min_rr * risk) or (not buy and z2.hi <= entry - p.min_rr * risk)) and
+                  (not p.fresh or z2.first_touch > b.t)]
             if not tz:
                 continue
             tgt = min(z2.lo for z2 in tz) if buy else max(z2.hi for z2 in tz)
@@ -161,3 +164,5 @@ if __name__ == "__main__":
 #   6 trade +0.0R; me prekje 0.06 ADR 16 trade +6.0R; pa kufi wick 10 trade +5.9R.
 # Shume pak trade ne 8 muaj per te thene nese ka avantazh. Ne 25 Sep boti zgjodhi zonen
 # 4267.68-4277.81 dhe hyri ne 4284 (-1R); perdoruesi hyri ne ~4273 te zona 4269-4272.
+# Me zona FRESH (fillestar): 3 trade, -3.0R; me prekje 0.06 ADR: 10 trade, -6.7R;
+# pa kufi wick: 6 trade, +5.8R. Setup-i ndodh shume rralle per nje gjykim statistikor.

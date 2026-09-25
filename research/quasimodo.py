@@ -33,6 +33,7 @@ class Zone:
     known: int     # koha (ms) kur zona njihet (mbyllja e qirinjve te levizjes)
     dead: int = 2**62  # koha kur zona prishet (mbyllje pertej saj)
     touches: int = 0
+    first_touch: int = 2**62  # koha e prekjes se pare pas krijimit (zona "fresh" deri atehere)
 
 
 def find_zones(bars, tf_ms, disp=1.5, look=3, atr_n=14):
@@ -50,10 +51,12 @@ def find_zones(bars, tf_ms, disp=1.5, look=3, atr_n=14):
         if max(x.h for x in nxt) >= b.h + disp * a and b.l <= min(x.l for x in bars[j + 1:j + 2]):
             z = Zone("D", min(b.l, nxt[0].l), max(b.o, b.c), bars[j + look].t + tf_ms)
             zones.append(z)
-    # prishja: mbyllje e nje qiri pertej zones pasi njihet
+    # prishja: mbyllje e nje qiri pertej zones pasi njihet; prekja e pare = mitigimi
     for z in zones:
         for x in bars:
             if x.t + tf_ms <= z.known: continue
+            if z.first_touch == 2**62 and ((z.kind == "S" and x.h >= z.lo) or (z.kind == "D" and x.l <= z.hi)):
+                z.first_touch = x.t
             if (z.kind == "S" and x.c > z.hi) or (z.kind == "D" and x.c < z.lo):
                 z.dead = x.t + tf_ms
                 break
@@ -105,6 +108,7 @@ class P:
     end_h: int = 20
     spread: float = 0.2
     max_zone_age_days: float = 10
+    fresh: bool = False         # vetem zona te paprekura (fresh / unmitigated)
     rej_mode: str = "confirm"   # "strict": qiri qe prek eshte rejection; "confirm": prekje, pastaj qiri bearish nen te
     confirm_bars: int = 2
     tp_mode: str = "origin"     # "near": zona M15 me e afert (>= min_rr); "origin": fundi/maja nga nisi leg-u; "rr"
@@ -161,6 +165,8 @@ def run(m5, p: P, ind=None, verbose=False):
                 if head[3] > sh[3] and mids:
                     low1 = min(mids, key=lambda s: s[3])
                     zs = active(ind["zh1"], "S", m5[head[1]].t, age)
+                    if p.fresh:  # koka duhet te jete prekja e pare e zones
+                        zs = [z for z in zs if z.first_touch >= m5[max(0, head[1] - 12)].t]
                     if any(z.lo - p.zone_tol <= head[3] <= z.hi + p.zone_tol for z in zs):
                         if not p.use_ao or (ao[head[1]] == ao[head[1]] and ao[sh[1]] == ao[sh[1]] and ao[head[1]] < ao[sh[1]]):
                             orig = min(m5[j].l for j in range(max(0, head[1] - p.origin_bars), head[1] + 1))
@@ -171,6 +177,8 @@ def run(m5, p: P, ind=None, verbose=False):
                 if head[3] < sh[3] and mids:
                     high1 = max(mids, key=lambda s: s[3])
                     zs = active(ind["zh1"], "D", m5[head[1]].t, age)
+                    if p.fresh:
+                        zs = [z for z in zs if z.first_touch >= m5[max(0, head[1] - 12)].t]
                     if any(z.lo - p.zone_tol <= head[3] <= z.hi + p.zone_tol for z in zs):
                         if not p.use_ao or (ao[head[1]] == ao[head[1]] and ao[sh[1]] == ao[sh[1]] and ao[head[1]] > ao[sh[1]]):
                             orig = max(m5[j].h for j in range(max(0, head[1] - p.origin_bars), head[1] + 1))
@@ -213,6 +221,8 @@ def run(m5, p: P, ind=None, verbose=False):
                         risk = max(abs(entry - slp), p.min_sl)
                         if risk <= p.max_sl and ((sell and entry < slp) or (not sell and entry > slp)):
                             zs = active(ind["zm15"], "D" if sell else "S", b.t, age)
+                            if p.fresh:
+                                zs = [z for z in zs if z.first_touch > b.t]
                             tgt = None
                             if sell:
                                 c2 = [z.hi for z in zs if z.hi < entry - p.min_rr * risk]
@@ -241,3 +251,5 @@ def run(m5, p: P, ind=None, verbose=False):
 # sl_mode="rej", tp_mode="origin"): 109 trade, 16% fitime, +20.8R (shk-maj +7.2R, qer-sht +13.6R).
 # Me filtrin AO mbeten vetem 7-8 trade ne 8 muaj. Si modul i dyte krahas botit: +171R por
 # drawdown 28R (nga 21R) dhe korriku -10.5R, prandaj nuk u shtua ne botin live.
+# Me zona FRESH (koka = prekja e pare e zones H1, TP ne zone M15 te paprekur): 34 trade, -1.2R;
+# me AO: 10 trade, +1.0R. Dy trade-t e 25 Sep kapen edhe keshtu (zonat ishin fresh).
