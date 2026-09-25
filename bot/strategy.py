@@ -8,11 +8,12 @@ MODE=sniper (fillestar) - lekundjet e dites:
   Refuzimi: bisht i gjate, qiri i forte kthimi, ose nje nga 2 qirinjte pas
   ekstremit mbyllet pertej trupit te tij.
 
-  Tipi i dites (ari ben ose trend gjithe diten, ose rotacion BUY-SELL-BUY-SELL):
+  Tipi i dites (ari ben ose trend gjithe diten, ose rotacion BUY-SELL-BUY-SELL).
+  Eficienca = |cmimi - hapja| / rruga e pershkuar: trendi leviz drejt, rotacioni lart-poshte.
     - DITE TRENDI: ne cdo moment kur cmimi eshte >= 0.7 x ADR larg hapjes se dites,
       boti tregton vetem ne ate drejtim dhe e kaleron me trailing.
-    - DITE ROTACIONI: pas 8 oreve te para (00:00-08:00 ora e grafikut), nese levizja
-      eshte < 0.2 x ADR (81% e ketyre diteve nuk bejne trend): BUY dhe SELL me TP te vogel.
+    - DITE ROTACIONI: pas 6 oreve eficienca < 0.15, ose pas 8 oreve levizja < 0.2 x ADR:
+      BUY dhe SELL me TP te vogel.
 
   Ditet me trend (vetem SELL ose vetem BUY): pasi cmimi ka rene >= 0.45 x ADR
   nga maja dhe s'ka kthim te madh, boti shet rikthimin e vogel (pullback
@@ -66,6 +67,11 @@ class Params:
                                    #   ne 8 muaj te dhena e ulte fitimin jashte mostres)
     trend_day_adr: float = 0.7     # cmimi tani >= kaq x ADR larg hapjes -> dite trendi (0 = joaktiv)
     rot_day_adr: float = 0.2       # levizja e 8 oreve te para < kaq x ADR -> dite rotacioni (0 = joaktiv)
+    # Eficienca e dites = |cmimi - hapja| / rruga e pershkuar (shuma e levizjeve te qirinjve).
+    # Trend = leviz drejt (eficience e larte); rotacion = shkon lart-poshte (eficience e ulet).
+    # Ne 8 muaj: eficienca < 0.15 pas 6 oreve -> vetem 4-18% e diteve mbarojne trend.
+    eff_bars: int = 24             # eficienca matet pas 6 oreve te para (24 qirinj)
+    eff_rot: float = 0.15          # eficienca < kaq -> dite rotacioni (0 = joaktiv)
 
 
 @dataclass
@@ -314,10 +320,15 @@ def detect_trend(bars, i, p: Params, atr, adr, pivots):
 
 def day_types(bars, adr, p: Params):
     """Per cdo qiri (vetem nga e kaluara): "UP"/"DOWN" = dite trendi, "ROT" = rotacion, "" = e paqarte."""
-    out, start = [], {}
+    out, start, path = [], {}, 0.0
     for j, b in enumerate(bars):
         d = (b.t + SERVER_OFFSET_MS) // 86_400_000
-        k0 = start.setdefault(d, j)
+        if d not in start:
+            start[d] = j
+            path = 0.0
+        else:
+            path += abs(b.c - bars[j - 1].c)
+        k0 = start[d]
         kind = ""
         if adr[j] == adr[j]:
             # 8 oret e para: levizje e madhe = trend, levizje e vogel = rotacion
@@ -327,8 +338,12 @@ def day_types(bars, adr, p: Params):
                     kind = "UP" if early > 0 else "DOWN"
                 elif p.rot_day_adr and abs(early) < p.rot_day_adr:
                     kind = "ROT"
-            # trend: tani cmimi eshte larg hapjes (mund te ndodhe ne cdo ore)
             move = (b.c - bars[k0].o) / adr[j]
+            # eficienca e dites pas 6 oreve: e ulet = cmimi shkon lart-poshte = rotacion
+            if p.eff_rot and j - k0 >= p.eff_bars and path > 0:
+                if abs(b.c - bars[k0].o) / path < p.eff_rot:
+                    kind = "ROT"
+            # trend: tani cmimi eshte larg hapjes (mund te ndodhe ne cdo ore)
             if p.trend_day_adr and abs(move) >= p.trend_day_adr:
                 kind = "UP" if move > 0 else "DOWN"
         out.append(kind)

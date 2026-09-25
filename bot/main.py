@@ -116,6 +116,11 @@ class GoldSniper:
         exit_txt = f"pa TP, trailing {c.trail_adr:.2f} x ADR pas {c.trail_start_r:.1f}R" if c.trailing else f"TP 1:{c.rr:.1f}"
         log.info("Rreziku %.2f%% | Dalja: %s | BE %.1fR | ora %d-%d UTC",
                  c.risk_percent, exit_txt, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
+        if s.mode == "sniper":
+            log.info("Tipi i dites: TREND kur cmimi >= %.1f x ADR nga hapja (trailing %.1f x ADR%s) | "
+                     "ROTACION kur eficienca pas 6 oreve < %.2f (TP %.1f x ADR)",
+                     s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
+                     s.eff_rot, c.rot_tp_adr)
 
     def update_conversion(self):
         """Sa vlen 1 USD ne valuten e llogarise (per llogaritjen e lotit)."""
@@ -419,8 +424,12 @@ class GoldSniper:
             be = entry + buf if buy else entry - buf
             new_sl = max(new_sl, be) if buy else min(new_sl, be)
         if c.trailing and self.adr and fav >= risk * c.trail_start_r:
-            # dite trendi ne drejtimin e trade-it -> jepi me shume hapesire
+            # dite trendi ne drejtimin e trade-it -> jepi me shume hapesire; pasi trade-i njihet
+            # si trend mbetet i tille, qe nje rikthim te mos e ngushtoje trailing-un
             with_trend = self.day_kind == ("UP" if buy else "DOWN")
+            if c.sticky_trend:
+                plan["wide"] = plan.get("wide", False) or with_trend
+                with_trend = with_trend or plan["wide"]
             dist = (c.trend_trail_adr if with_trend and c.trend_trail_adr > 0 else c.trail_adr) * self.adr
             trail = plan["best"] - dist if buy else plan["best"] + dist
             new_sl = max(new_sl, trail) if buy else min(new_sl, trail)

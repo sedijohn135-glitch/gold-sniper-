@@ -27,18 +27,30 @@ Rregullat:
 | 3 | Refuzim: bisht i gjatë lart (≥40%), **ose** qiri i fortë bearish që mbyllet në 25% e poshtme, **ose** një nga 2 qirinjtë pas majës mbyllet nën trupin e saj | Refuzim: bisht i gjatë poshtë, **ose** qiri i fortë bullish, **ose** një nga 2 qirinjtë pas fundit mbyllet mbi trupin e tij |
 
 **Dy lloje ditësh.** Ari bën çdo ditë njërën nga dy gjërat: ose trend gjithë ditën (vetëm BUY ose vetëm
-SELL), ose rotacion (BUY-SELL-BUY-SELL). Në 81 ditë: 36% trend, 64% rotacion. Boti e përcakton tipin
-gjatë ditës:
+SELL), ose rotacion (BUY-SELL-BUY-SELL). Boti e dallon vetë, pa ndihmën tënde, me aritmetikën e ditës:
+
+**Eficienca e ditës** = |çmimi − hapja| / rruga e përshkuar (shuma e lëvizjeve të çdo qiriri).
+Trendi lëviz drejt (eficiencë e lartë), rotacioni shkon lart-poshtë (eficiencë e ulët).
+U mat në 164 ditë (8 muaj), 6 orë pas hapjes së ditës:
+
+| Eficienca pas 6 orëve | Sa mbarojnë trend (shkurt–maj / qershor–shtator) |
+|---|---|
+| < 0.15 | **4% / 18%** → pothuajse gjithmonë rotacion |
+| 0.15 – 0.30 | 31% / 19% |
+| ≥ 0.30 | 38% / 62% |
+
+Rregullat e botit:
 
 | Kushti | Tipi | Çfarë bën boti |
 |---|---|---|
-| Në çdo moment çmimi është ≥ 0.7 × ADR (~70$) larg hapjes së ditës | **DITË TRENDI** | vetëm trade në drejtimin e ditës, dalje me trailing |
-| 8 orët e para (00:00–08:00 ora e grafikut) lëvizin < 0.2 × ADR, dhe dita s'është bërë trend | **DITË ROTACIONI** (81% nuk bëjnë trend) | BUY dhe SELL, TP i vogël 0.3 × ADR (~30$) |
-| asnjëra | e paqartë | të dyja drejtimet, dalje me trailing |
+| Çmimi është ≥ 0.7 × ADR (~70$) larg hapjes së ditës | **DITË TRENDI** | vetëm trade në drejtimin e ditës; trailing i gjerë 0.8 × ADR |
+| Pas 6 orëve eficienca < 0.15, ose pas 8 orëve lëvizja < 0.2 × ADR | **DITË ROTACIONI** | BUY dhe SELL, TP 0.3 × ADR (~30–50$ në çdo leg) |
+| asnjëra | e paqartë | të dyja drejtimet, trailing 0.4 × ADR |
 
-Rregulli "në çdo moment" e kap ditën e trendit edhe kur ai fillon vonë ose kur fundi/maja
-ishte para orarit të tregtimit (si 10 dhe 11 qershor). Një rregull që e caktonte trendin nga
-8 orët e para dukej mirë në qershor–shtator, por humbi para në shkurt–maj, prandaj u hoq.
+**Trade trendi mbetet trade trendi.** Kur një trade njihet si trend (dita tregon trend në drejtimin
+e tij), ai mban trailing-un e gjerë deri në mbyllje. Pa këtë, sa herë vinte një rikthim, çmimi afrohej
+te hapja, sinjali i trendit fikej dhe trailing-u ngushtohej pikërisht kur trade-i kishte nevojë për
+hapësirë.
 
 **Ditët me trend** (vetëm SELL ose vetëm BUY, si 1 dhe 2 shtator): pasi çmimi ka rënë ≥ 0.45 × ADR
 nga maja dhe s'bën kthim të madh, boti **shet rikthimin e vogël** (pullback 10–35% e ADR) kur ai
@@ -60,30 +72,28 @@ Rregullat u ndërtuan me të dhënat e qershorit–shtatorit. Shkurti–maji nuk
 t'i zgjedhur, prandaj ai është testi i ndershëm ("jashtë mostrës"): si do dilte boti në muaj
 që s'i ka parë kurrë.
 
-| | **Sniper (fillestar)** | Gjuetar trendi (`TRAIL_ADR=0.6`) | TP fiks 1:3 (`TRAIL_ADR=0`) | `MODE=klasik` |
+| | **Sniper (fillestar)** | Sniper pa eficiencë dhe pa "trade trendi" | TP fiks 1:3 (`TRAIL_ADR=0`) | `MODE=klasik` |
 |---|---|---|---|---|
-| **Shkurt–maj (jashtë mostrës)** | **+36.1R** (DD 20.9R) | +140.6R (DD 15.3R) | −6.6R | −10.3R |
-| Qershor–shtator (ku u ndërtua) | **+84.7R** (DD 14.8R) | +32.1R (DD 14.9R) | +49.9R | +28.4R |
-| **8 muaj gjithsej** | +104.6R (DD 20.9R) | **+152.8R** (DD 23.4R) | +35.4R | +17.1R |
-| Trade në ditë | 2.8 | 2.4 | 3.3 | 2.0 |
-| Ditë me ≥ 2 trade | 79% | 69% | 89% | 58% |
+| **Shkurt–maj (jashtë mostrës)** | **+108.2R** (DD 19.4R) | +36.1R (DD 20.9R) | −6.6R | −10.3R |
+| Qershor–shtator (ku u ndërtua) | +60.3R (DD 18.7R) | **+84.7R** (DD 14.8R) | +49.9R | +28.4R |
+| **8 muaj gjithsej** | **+150.2R** (DD 19.4R) | +104.6R (DD 20.9R) | +35.4R | +17.1R |
+| Trade në ditë | 2.7 | 2.8 | 3.3 | 2.0 |
 
-**Sniper (fillestar)** del mirë në të dy periudhat. **Gjuetari i trendit** mban trailing të gjerë
-(0.6 × ADR) në çdo trade: në muajt me trende të mëdha (shkurt–maj) fiton shumë më tepër, p.sh. 20 marsi
-+18.5R (gjithë rënia 240$) në vend të +1.9R, por në muajt më të qetë (qershor–shtator) fiton shumë më pak.
-Zgjidhe sipas tregut: vendos `TRAIL_ADR=0.6` në Railway kur ari bën trende të mëdha.
+Sipas muajve (fillestari): shkurt +27.2R, mars +26.8R, prill +28.0R, maj +22.3R, qershor +7.1R,
+korrik −3.9R, gusht +23.7R, shtator +19.1R. 7 nga 8 muaj fitimprurës; muaji më i keq −3.9R.
+Versioni i mëparshëm fitonte më shumë në qershor–korrik, por kishte majin −9.3R dhe varej nga pak muaj të mirë.
 
-8 muaj, sniper: 488 trade, 87 fitime, 160 break-even, 241 humbje; trade-i më i mirë +25.2R.
+8 muaj, sniper: 456 trade, 83 fitime, 146 break-even, 227 humbje; trade-i më i mirë +28.4R.
 
 Çfarë tregon kjo:
 - Boti mbetet fitimprurës në muajt që s'i ka parë, por **më pak** se në muajt ku u ndërtua.
   Prit rezultate më afër shkurt–majit sesa qershor–shtatorit.
 - **Trailing stop-i është pjesa që funksionon vërtet**: pa të, çdo version humbet jashtë mostrës.
-- Drawdown-i max në 8 muaj ishte **20.9R**. Me 0.5% rrezik kjo është rreth −10% nga maja e llogarisë.
+- Drawdown-i max në 8 muaj ishte **19.4R**. Me 0.5% rrezik kjo është rreth −10% nga maja e llogarisë.
   Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
 - Rezultatet e kaluara nuk garantojnë të ardhmen.
 
-Me 0.5% rrezik për trade, 8 muajt dalin rreth +52% (gjuetari i trendit rreth +76%).
+Me 0.5% rrezik për trade, 8 muajt dalin rreth +75%.
 
 Me trailing boti bën më pak trade, sepse mban një pozicion gjatë një lëvizjeje të madhe.
 Provova të lejoj një pozicion të dytë kur i pari është pa rrezik (`MAX_POSITIONS=2`):
@@ -149,6 +159,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `MAX_LOTS` | `1.0` | loti maksimal për trade (mbrojtje) |
 | `TREND_DAY_ADR` | `0.7` | çmimi ≥ kaq × ADR larg hapjes së ditës → ditë trendi në atë moment (`0` = joaktiv) |
 | `EARLY_TREND_ADR` | `0` | 8 orët e para ≥ kaq × ADR → ditë trendi (joaktiv; humbi jashtë mostrës) |
+| `EFF_ROT` | `0.15` | eficienca e ditës pas 6 orëve < kaq → ditë rotacioni (`0` = joaktiv) |
+| `STICKY_TREND` | `true` | trade-i që njihet si trend mban trailing-un e gjerë deri në mbyllje |
 | `ROT_DAY_ADR` | `0.2` | 8 orët e para < kaq × ADR → ditë rotacioni (`0` = joaktiv) |
 | `ROT_TP_ADR` | `0.3` | TP në ditët e rotacionit (× ADR) |
 | `TREND_TRAIL_ADR` | `0.8` | trailing në ditët e trendit, në drejtimin e trade-it (× ADR; `0` = si `TRAIL_ADR`) |

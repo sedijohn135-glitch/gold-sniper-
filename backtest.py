@@ -47,7 +47,12 @@ def run(bars, cfg: Config, verbose=True):
                     be = entry + spread if buy else entry - spread
                     new_sl = max(new_sl, be) if buy else min(new_sl, be)
                 if cfg.trailing and fav >= risk * cfg.trail_start_r and ind["adr"][i] == ind["adr"][i]:
-                    with_trend = ind.get("day") and ind["day"][i] == ("UP" if buy else "DOWN")
+                    want = "UP" if buy else "DOWN"
+                    # trade trendi: pasi dita tregon trend ne drejtimin e trade-it, mbetet i tille
+                    # (qe nje rikthim te mos e ngushtoje trailing-un pikerisht kur duhet hapesire)
+                    now_trend = bool(ind.get("day")) and ind["day"][i] == want
+                    pos["wide"] = pos.get("wide", False) or (now_trend and cfg.sticky_trend) or False
+                    with_trend = now_trend or pos["wide"]
                     d = (cfg.trend_trail_adr if with_trend and cfg.trend_trail_adr > 0 else cfg.trail_adr) * ind["adr"][i]
                     new_sl = max(new_sl, pos["best"] - d) if buy else min(new_sl, pos["best"] + d)
                 pos["sl"] = new_sl
