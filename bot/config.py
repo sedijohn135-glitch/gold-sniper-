@@ -71,6 +71,8 @@ class Config:
             rsi_os=_f("RSI_OVERSOLD", 35),
             atr_period=_i("ATR_PERIOD", 14),
             sl_buffer_atr=_f("SL_BUFFER_ATR", 0.3),
+            strong_close_pct=_f("STRONG_CLOSE_PCT", 75),
+            equal_tol_atr=_f("EQUAL_TOL_ATR", 0),
         )
         cfg = cls(
             url=_env(["CTRADER_MCP_URL", "URL"], cls.url),

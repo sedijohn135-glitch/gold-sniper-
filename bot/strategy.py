@@ -3,7 +3,8 @@
 Ideja (si zonat roze ne screenshot):
   * MAJE -> SELL: qiri ben high me te larte se N qirinjte e meparshem
     (fshin likuiditetin), pas nje ngritjeje te madhe, dhe refuzohet:
-    bisht i gjate lart / mbyllje poshte, ose qiri tjeter mbyllet nen trupin e tij.
+    bisht i gjate lart / mbyllje poshte, qiri i forte bearish qe mbyllet ne 25%
+    e fundit, ose qiri tjeter mbyllet nen trupin e tij.
   * FUND -> BUY: e njejta gje e kundert.
 SL vendoset pertej majes/fundit + buffer ATR, TP = SL x RR.
 """
@@ -31,6 +32,8 @@ class Params:
     rsi_os: float = 35.0
     atr_period: int = 14
     sl_buffer_atr: float = 0.3
+    strong_close_pct: float = 75.0 # qiri i forte kthimi: mbyllet ne 25% e fundit (0 = joaktiv)
+    equal_tol_atr: float = 0.0     # maje/fund i dyfishte: lejon ekstremin deri ne kaq ATR nen/mbi te meparshmin
 
 
 @dataclass
@@ -79,7 +82,10 @@ def _bearish_rejection(b, p):
     if rng <= 0:
         return False
     upper_wick = b.h - max(b.o, b.c)
-    return upper_wick / rng * 100 >= p.min_wick_pct and (b.h - b.c) / rng * 100 >= p.min_close_pct
+    close_pct = (b.h - b.c) / rng * 100
+    wick_ok = upper_wick / rng * 100 >= p.min_wick_pct and close_pct >= p.min_close_pct
+    strong = p.strong_close_pct > 0 and b.c < b.o and close_pct >= p.strong_close_pct
+    return wick_ok or strong
 
 
 def _bullish_rejection(b, p):
@@ -87,7 +93,10 @@ def _bullish_rejection(b, p):
     if rng <= 0:
         return False
     lower_wick = min(b.o, b.c) - b.l
-    return lower_wick / rng * 100 >= p.min_wick_pct and (b.c - b.l) / rng * 100 >= p.min_close_pct
+    close_pct = (b.c - b.l) / rng * 100
+    wick_ok = lower_wick / rng * 100 >= p.min_wick_pct and close_pct >= p.min_close_pct
+    strong = p.strong_close_pct > 0 and b.c > b.o and close_pct >= p.strong_close_pct
+    return wick_ok or strong
 
 
 def detect(bars, i, p: Params, atr=None, rsi=None):
@@ -100,13 +109,14 @@ def detect(bars, i, p: Params, atr=None, rsi=None):
     if a != a or a <= 0:  # NaN
         return None
 
+    tol = p.equal_tol_atr * a
     for k in (i, i - 1):
         lo_idx = max(0, k - p.lookback)
         window = bars[lo_idx:k]
         bk = bars[k]
 
         # ------------- MAJE -> SELL -------------
-        if bk.h > max(b.h for b in window) and bk.h >= bars[i].h and bk.h >= bars[i - 1].h:
+        if bk.h > max(b.h for b in window) - tol and bk.h >= bars[i].h and bk.h >= bars[i - 1].h:
             leg_low = min(b.l for b in bars[lo_idx:k + 1])
             big_move = bk.h - leg_low >= p.min_leg_atr * a
             rsi_ok = (not p.use_rsi) or max(rsi[k], rsi[k - 1]) >= p.rsi_ob
@@ -119,7 +129,7 @@ def detect(bars, i, p: Params, atr=None, rsi=None):
                 return Signal("SELL", bk.h, k, bk.h + p.sl_buffer_atr * a, a)
 
         # ------------- FUND -> BUY -------------
-        if bk.l < min(b.l for b in window) and bk.l <= bars[i].l and bk.l <= bars[i - 1].l:
+        if bk.l < min(b.l for b in window) + tol and bk.l <= bars[i].l and bk.l <= bars[i - 1].l:
             leg_high = max(b.h for b in bars[lo_idx:k + 1])
             big_move = leg_high - bk.l >= p.min_leg_atr * a
             rsi_ok = (not p.use_rsi) or min(rsi[k], rsi[k - 1]) <= p.rsi_os

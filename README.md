@@ -16,7 +16,7 @@ dhe hap trade automatikisht në llogarinë tënde cTrader.
 | 1 | Qiriu bën high më të lartë se 32 qirinjtë e mëparshëm (8 orë) | Qiriu bën low më të ulët se 32 qirinjtë e mëparshëm |
 | 2 | Para kësaj ka pasur ngritje të madhe (≥ 3 × ATR) | Para kësaj ka pasur rënie të madhe (≥ 3 × ATR) |
 | 3 | RSI ≥ 65 (mbiblerje) | RSI ≤ 35 (mbishitje) |
-| 4 | Refuzim: bisht i gjatë lart (≥40%) dhe mbyllje poshtë, **ose** qiriu tjetër mbyllet nën trupin e majës | Refuzim: bisht i gjatë poshtë dhe mbyllje lart, **ose** qiriu tjetër mbyllet mbi trupin e fundit |
+| 4 | Refuzim: bisht i gjatë lart (≥40%) dhe mbyllje poshtë, **ose** qiri i fortë bearish që mbyllet në 25% e poshtme, **ose** qiriu tjetër mbyllet nën trupin e majës | Refuzim: bisht i gjatë poshtë dhe mbyllje lart, **ose** qiri i fortë bullish që mbyllet në 25% e sipërme, **ose** qiriu tjetër mbyllet mbi trupin e fundit |
 
 - **SL**: pak mbi majë / nën fund (+0.3 × ATR). Min 3$, max 25$ (nëse del më i madh, trade-i anulohet).
 - **TP**: 3 × SL (Risk:Reward 1:3).
@@ -27,11 +27,18 @@ dhe hap trade automatikisht në llogarinë tënde cTrader.
 ### Rezultati në 120 ditët e fundit (të dhëna reale M15 nga llogaria jote)
 
 ```
-Trade: 214 | Fitime: 41 (+3R) | Break-even: 74 | Humbje: 99 (-1R) | Totali: +25.6R
-Drawdown max: ~15R | Seria më e gjatë e humbjeve: 7
+Trade: 234 | Fitime: 46 (+3R) | Break-even: 78 | Humbje: 110 (-1R) | Totali: +29.6R
+Drawdown max: ~11R | Seria më e gjatë e humbjeve: 8
 ```
 
-Me 0.5% rrezik për trade, kjo është rreth +12.8% dhe drawdown max rreth 7.5%.
+Me 0.5% rrezik për trade, kjo është rreth +14.8% dhe drawdown max rreth 5.5%.
+
+Nga 13 majat/fundet e shënuara në screenshot (17–25 shtator), boti i zbulon 10.
+Nuk i kap: fundin 4274 të 17 shtatorit (fund më i lartë pas rënies, jo fshirje likuiditeti),
+fundin 4334 të 18 shtatorit (RSI 39, jo ≤ 35) dhe majën 4369 të 23 shtatorit
+(majë e dyfishtë pak më poshtë se maja e mëparshme).
+Disa të tjera i zbulon, por nuk hap trade sepse ka tashmë pozicion të hapur në të njëjtin drejtim,
+është jashtë orarit (00:00 UTC) ose SL-ja del mbi 25$.
 Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
 **Rezultatet e kaluara nuk garantojnë rezultatet e ardhshme.** Provoje fillimisht në llogari demo.
 
@@ -90,6 +97,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `MIN_WICK_PCT` | `40` | bishti minimal i qirit të refuzimit (%) |
 | `RSI_OVERBOUGHT` / `RSI_OVERSOLD` | `65` / `35` | filtri RSI |
 | `USE_RSI` | `true` | çaktivizo filtrin RSI me `false` |
+| `STRONG_CLOSE_PCT` | `75` | qiri i fortë kthimi pa bisht (`0` = joaktiv) |
+| `EQUAL_TOL_ATR` | `0` | lejon majë/fund të dyfishtë (p.sh. `0.2`); në backtest ul fitimin |
 
 Llogaria jote demo ka balancë shumë të madhe, prandaj me 0.5% rrezik loti del gjithmonë
 te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dëshirës.

@@ -64,6 +64,9 @@ namespace cAlgo.Robots
         [Parameter("Mbyllja e refuzimit (% e qirit)", DefaultValue = 50, MinValue = 0, MaxValue = 100, Group = "Strategjia")]
         public double MinClosePercent { get; set; }
 
+        [Parameter("Qiri i forte kthimi (% mbyllje, 0 = joaktiv)", DefaultValue = 75, MinValue = 0, MaxValue = 100, Group = "Strategjia")]
+        public double StrongClosePercent { get; set; }
+
         [Parameter("Perdor filtrin RSI", DefaultValue = true, Group = "Strategjia")]
         public bool UseRsiFilter { get; set; }
 
@@ -227,7 +230,7 @@ namespace cAlgo.Robots
             return null;
         }
 
-        // Qiri me bisht te gjate lart dhe mbyllje ne pjesen e poshtme
+        // Qiri me bisht te gjate lart dhe mbyllje poshte, ose qiri i forte bearish
         private bool IsBearishRejection(int k)
         {
             double o = Bars.OpenPrices[k], h = Bars.HighPrices[k], l = Bars.LowPrices[k], c = Bars.ClosePrices[k];
@@ -235,10 +238,12 @@ namespace cAlgo.Robots
             if (range <= 0) return false;
             double upperWick = h - Math.Max(o, c);
             double closeFromHigh = (h - c) / range * 100.0;
-            return upperWick / range * 100.0 >= MinWickPercent && closeFromHigh >= MinClosePercent;
+            bool wickOk = upperWick / range * 100.0 >= MinWickPercent && closeFromHigh >= MinClosePercent;
+            bool strong = StrongClosePercent > 0 && c < o && closeFromHigh >= StrongClosePercent;
+            return wickOk || strong;
         }
 
-        // Qiri me bisht te gjate poshte dhe mbyllje ne pjesen e siperme
+        // Qiri me bisht te gjate poshte dhe mbyllje lart, ose qiri i forte bullish
         private bool IsBullishRejection(int k)
         {
             double o = Bars.OpenPrices[k], h = Bars.HighPrices[k], l = Bars.LowPrices[k], c = Bars.ClosePrices[k];
@@ -246,7 +251,9 @@ namespace cAlgo.Robots
             if (range <= 0) return false;
             double lowerWick = Math.Min(o, c) - l;
             double closeFromLow = (c - l) / range * 100.0;
-            return lowerWick / range * 100.0 >= MinWickPercent && closeFromLow >= MinClosePercent;
+            bool wickOk = lowerWick / range * 100.0 >= MinWickPercent && closeFromLow >= MinClosePercent;
+            bool strong = StrongClosePercent > 0 && c > o && closeFromLow >= StrongClosePercent;
+            return wickOk || strong;
         }
 
         // Qiri pas majes mbyllet bearish nen trupin e qirit te majes
