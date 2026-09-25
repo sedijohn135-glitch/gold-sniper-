@@ -63,7 +63,7 @@ me trendin, jo vetëm kundër tij.
   mbyllet vetëm kur lëkundja e ditës kthehet vërtet. Kështu boti e kalëron lëvizjen e plotë,
   si 19 gushti (+203$) ose 2 shtatori. **Në ditët e trendit** (në drejtimin e trade-it) distanca
   bëhet **0.8 × ADR**, që trade-i të mos dalë nga një rikthim i zakonshëm i trendit.
-- Vetëm 1 pozicion sniper njëherësh (moduli i konfluencës ka pozicionin e vet), max 4 trade sniper në ditë,
+- Vetëm 1 pozicion sniper njëherësh (konfluenca dhe hierarkia kanë pozicionin e tyre), max 4 trade sniper në ditë,
   stop për të dy modulet nëse humbja ditore arrin 3%.
 - **E premte 19:00 UTC (22:00 ora e grafikut):** mbyll gjithçka dhe s'hap trade të reja deri të hënën.
   Pa këtë, një trade i së premtes mbahej gjithë fundjavën dhe e hënën (rrezik gap-i të hënën në mëngjes).
@@ -143,7 +143,34 @@ dhe vetëm ~2 trade në javë, prandaj 64 trade janë ende pak për një gjykim 
 Nuk i kap të gjitha shembujt e tu: kur një setup ka më pak se 4 nivele ose TP-ja është nën 3R, e lë.
 Për ta fikur: `CONFLUENCE=false`.
 
-Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca).
+### Moduli i tretë: HIERARKIA (muri H1 → konfirmimet → hyrja)
+
+Logjika jote hap pas hapi. Tregu lëviz nga blerësit dhe shitësit: nëse çmimi prek një zonë
+**H1** supply/demand dhe **s'e thyen dot**, ai s'ka forcë në atë drejtim. Pastaj vijnë konfirmimet:
+
+1. **Muri H1**: prekja e parë e një zone H1 (fresh), pa asnjë mbyllje përtej saj.
+2. Brenda 8 orëve pas prekjes: **thyerje strukture M5** (mbyllje nën swing low-in e fundit para majës,
+   pra demand-i M5 i thyer) **dhe divergjencë AO në M5** (maja më e lartë, AO më i ulët).
+3. **Rejection M5** → hyrje në mbylljen e qirit. SL pas wick-ut (minimumi 3$), TP te niveli
+   fresh përballë (zonë M15/M30/H1/H4 ose trendline), të paktën **2R** larg.
+4. Pozicion i vetin (label `GoldSniper-H`), SL/TP fikse, pa trailing.
+5. Në Telegram shfaqen konfirmimet: `HIERARKIA: muri H1 s'u thye + thyerje strukture M5 + divergjence AO + … + rejection M5`.
+
+| 8 muaj (M5 nga llogaria) | Trade | Rezultati | Drawdown | Shk–maj | Qer–sht |
+|---|---|---|---|---|---|
+| **Hierarkia** (H1 + thyerje + AO) | 233 | **+95.6R** | 14.8R | +37.0R | +58.6R |
+| Hierarkia me slippage 0.3$ | 233 | +80.5R | 15.2R | +31.4R | +49.1R |
+| Muri H4 në vend të H1 | 87 | −9.5R | | | |
+| **Sniper + konfluencë + hierarki** | **768** | **+269.2R** | **16.9R** | +148.7R | +120.6R |
+
+Të tre modulet bashkë: të 8 muajt fitimprurës (më i keqi +14.3R), drawdown më i vogël se sniper-i vetëm.
+
+Nga konfirmimet që provova veç e veç, **divergjenca AO** dhe **zona M5 e thyer** kanë avantazh.
+QM dhe trendline-i si konfirmim i vetëm dolën negativë në këtë kod. Edhe kjo metodë fiton nga pak
+trade të mëdha: SL i vogël dhe TP larg. Pa 10 trade-t më të mira rezultati është afër zeros,
+prandaj duhen javë të tëra për ta gjykuar. Për ta fikur: `HIERARCHY=false`.
+
+Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca, hierarkia).
 
 ## Vendosja në Railway (nga telefoni)
 
@@ -246,6 +273,9 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `CONFLUENCE` | `true` | moduli i dytë i konfluencës (`false` = vetëm sniper) |
 | `CONF_MIN_LEVELS` | `4` | sa nivele fresh duhet të bashkohen (3 = më shumë trade, më pak fitim për trade) |
 | `CONF_RR` | `3.0` | TP i konfluencës duhet të jetë të paktën kaq R larg |
+| `HIERARCHY` | `true` | moduli i tretë i hierarkisë (`false` = joaktiv) |
+| `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
+| `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 
 Llogaria jote demo ka balancë shumë të madhe, prandaj me 0.5% rrezik loti del gjithmonë
 te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dëshirës.
@@ -259,6 +289,7 @@ bot/mcp_client.py  lidhja me cTrader Trading MCP
 bot/data.py        marrja e qirinjve (M15, M5)
 bot/zones.py       zonat supply/demand fresh, zonat e thyera (flip), swing-et
 bot/confluence.py  moduli i konfluences (H1/H4 + zona fresh + trendline + rejection M5)
+bot/hierarchy.py   moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO + rejection M5)
 bot/telegram.py    njoftimet dhe komanda /status
 bot/config.py      parametrat nga variablat e mjedisit
 backtest.py        backtest me të dhënat reale

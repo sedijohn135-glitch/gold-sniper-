@@ -8,19 +8,8 @@ from datetime import datetime, timezone
 
 
 from bot.strategy import Bar, atr_series  # ekzekuto nga rrenja e repo-s: python -m research.quasimodo
-from bot.zones import Zone, aggregate, find_zones, swings
-
-
-def ao_series(bars):
-    med = [(b.h + b.l) / 2 for b in bars]
-    out = [float("nan")] * len(bars)
-    s5 = s34 = 0.0
-    for i, m in enumerate(med):
-        s5 += m; s34 += m
-        if i >= 5: s5 -= med[i - 5]
-        if i >= 34: s34 -= med[i - 34]
-        if i >= 33: out[i] = s5 / 5 - s34 / 34
-    return out
+from bot.zones import Zone, aggregate, find_zones, swings  # noqa: F401
+from bot.hierarchy import ao_series  # noqa: F401
 
 
 @dataclass

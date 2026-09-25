@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import confluence as conf
+from . import hierarchy as hier
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .mcp_client import PRICE_SCALE, McpClient, McpError
@@ -24,6 +25,8 @@ from .telegram import Telegram
 
 log = logging.getLogger("gold-sniper")
 RECENT_LOGS = deque(maxlen=100)
+HIER_NAMES = {"bos": "thyerje strukture M5", "ao": "divergjence AO", "qm": "QM",
+              "flip": "zone M5 e thyer", "tl": "trendline M30", "ltf": "zone fresh M15/M30"}
 
 
 # ---------------------------------------------------------------- helpers
@@ -105,9 +108,11 @@ class GoldSniper:
         self.day_stats = {"opened": 0, "closed": 0, "wins": 0, "r": 0.0, "pnl": 0.0}
         self.last_balance = self.last_equity = None
         self.open_summary = []   # pozicionet e hapura (per /status)
-        self.conf_label = cfg.label + "-C"
+        # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
+        self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H"}
         self.conf_params = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
-        self.m5 = []             # qirinjte M5 per modulin e konfluences
+        self.hier_params = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
+        self.m5 = []             # qirinjte M5 per modulet e konfluences dhe te hierarkise
         self.last_m5_t = None
         self.error_since = None  # kur filloi problemi i fundit me cTrader
         self.error_sent = 0.0
@@ -146,6 +151,9 @@ class GoldSniper:
             if c.conf_on:
                 log.info("Moduli KONFLUENCE: >= %d nivele fresh (me te pakten nje H1/H4) + rejection M5 | TP >= %.1fR",
                          c.conf_min_levels, c.conf_rr)
+            if c.hier_on:
+                log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
+                         "divergjence AO + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
             log.info("Tipi i dites: TREND kur cmimi >= %.1f x ADR nga hapja (trailing %.1f x ADR%s) | "
                      "ROTACION kur eficienca pas 6 oreve < %.2f (TP %.1f x ADR)",
                      s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
@@ -196,18 +204,18 @@ class GoldSniper:
             label = find_key(p, "label")
             comment = find_key(p, "comment")
             sym = find_key(p, "symbolId")
-            if pid in self.my_position_ids or label in (self.cfg.label, self.conf_label) or (
-                    comment in (self.cfg.label, self.conf_label) and sym == self.cfg.symbol_id):
+            mine = self.labels.values()
+            if pid in self.my_position_ids or label in mine or (comment in mine and sym == self.cfg.symbol_id):
                 out.append(p)
         return out
 
     def module_of(self, pos):
-        """"main" = moduli sniper, "conf" = moduli i konfluences."""
+        """"main" = moduli sniper, "conf" = konfluenca, "hier" = hierarkia."""
         plan = self.plans.get(find_key(pos, "positionId"))
         if plan and plan.get("module"):
             return plan["module"]
-        is_conf = self.conf_label in (find_key(pos, "label"), find_key(pos, "comment"))
-        return "conf" if is_conf else "main"
+        tags = (find_key(pos, "label"), find_key(pos, "comment"))
+        return next((m for m in ("conf", "hier") if self.labels[m] in tags), "main")
 
     # ------------------------------------------------------------ loop
     def run(self):
@@ -268,14 +276,14 @@ class GoldSniper:
             self.check_closed(positions)
         self.manage(positions)
         self.check_daily_loss(positions)
-        if self.cfg.conf_on:
+        if self.cfg.conf_on or self.cfg.hier_on:
             try:
-                self.confluence_tick(now, positions)
+                self.m5_tick(now, positions)
             except McpError as e:
-                log.error("Konfluenca: gabim cTrader: %s", e)
+                log.error("Modulet M5: gabim cTrader: %s", e)
         self.open_summary = [
-            f"{'[K] ' if self.module_of(p) == 'conf' else ''}"
-            f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
+            {"conf": "[K] ", "hier": "[H] "}.get(self.module_of(p), "")
+            + f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
             f" @ {to_price(find_key(p, 'price', 'entryPrice', 'openPrice')) or 0:.2f}"
             f" | SL {to_price(find_key(p, 'stopLoss')) or 0:.2f}" for p in positions]
 
@@ -374,7 +382,7 @@ class GoldSniper:
     def open_trade(self, side, lots, risk, ref_price, tp_dist=None, note="", module="main", tp_price=None):
         c = self.cfg
         volume = int(round(lots * c.lot_size * 100))
-        label = self.conf_label if module == "conf" else c.label
+        label = self.labels[module]
         if tp_price is not None:
             tp_dist = abs(tp_price - ref_price)
         if tp_dist is None and not c.trailing:
@@ -433,7 +441,7 @@ class GoldSniper:
         self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry,
                            "side": side, "entry": entry, "lots": lots, "bal_open": bal_open,
                            "opened": int(time.time() * 1000), "locked_r": 0,
-                           "module": module, "fixed": module == "conf"}
+                           "module": module, "fixed": module != "main"}
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
@@ -443,6 +451,7 @@ class GoldSniper:
             f"{note}\n"
             f"SL {sl:.2f} ({risk:.2f}$, rrezik ~{risk_money:,.2f} {self.deposit_asset})\n"
             + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
+               f"TP {tp:.2f} (niveli fresh perballe)" if module == "hier" else
                f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
         self.protect(pid, details)
 
@@ -510,8 +519,9 @@ class GoldSniper:
             if (plan is not None and not plan.get("ok")) or find_key(pos, "stopLoss") is None:
                 self.protect(pid, pos)
                 continue
-            if self.module_of(pos) == "conf":
-                # konfluenca: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
+            module = self.module_of(pos)
+            if module != "main":
+                # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
                 if plan is None:
                     entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
                     sl = to_price(find_key(pos, "stopLoss")) or entry
@@ -520,17 +530,17 @@ class GoldSniper:
                                        "side": side_of(pos), "entry": entry,
                                        "lots": (find_key(pos, "volume") or 0) / (self.cfg.lot_size * 100),
                                        "bal_open": self.last_balance, "opened": int(time.time() * 1000),
-                                       "module": "conf", "fixed": True}
+                                       "module": module, "fixed": True}
                 continue
             self.manage_stop(pid, pos, plan)
 
-    # ------------------------------------------------------------ konfluenca
-    def confluence_tick(self, now, positions):
-        """Cdo 5 minuta: zonat fresh M5-H4 + trendline M30; rejection ne M5 -> trade me SL/TP fikse."""
-        c, p = self.cfg, self.conf_params
+    # ------------------------------------------------------------ modulet M5
+    def m5_tick(self, now, positions):
+        """Cdo 5 minuta: qirinjte M5 te 12 diteve te fundit -> konfluenca dhe hierarkia."""
+        c = self.cfg
         if self.last_m5_t is not None and now < self.last_m5_t + 2 * conf.TF["M5"] + 5000:
             return
-        # 12 dite M5 herën e pare; pastaj vetem oret e fundit
+        # 12 dite M5 heren e pare; pastaj vetem oret e fundit
         since = now - 12 * 86_400_000 if not self.m5 else self.m5[-1].t - 3_600_000
         fresh = fetch_bars(self.client, c.symbol_id, since, now, "M_5")
         merged = {b.t: b for b in self.m5}
@@ -543,17 +553,34 @@ class GoldSniper:
             self.last_m5_t = self.last_m5_t or newest.t
             return
         self.last_m5_t = newest.t
-        ind = conf.prepare(self.m5, p)
-        sig = conf.evaluate(newest, ind["adr"][-1], conf.active_zones(ind["zones"], newest, p), ind["lines"], p)
-        if not sig:
-            return
-        levels = "+".join(sig["levels"])
-        log.info("KONFLUENCE %s | nivele %s | SL %.2f TP %.2f | qiri %s", sig["side"], levels, sig["sl"], sig["tp"],
-                 utc(newest.t))
+        if c.conf_on:
+            p = self.conf_params
+            ind = conf.prepare(self.m5, p)
+            sig = conf.evaluate(newest, ind["adr"][-1], conf.active_zones(ind["zones"], newest, p), ind["lines"], p)
+            if sig:
+                levels = "+".join(sig["levels"])
+                log.info("KONFLUENCE %s | nivele %s | SL %.2f TP %.2f | qiri %s", sig["side"], levels,
+                         sig["sl"], sig["tp"], utc(newest.t))
+                self.fixed_trade("conf", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
+                                 f"KONFLUENCE: {levels} + rejection M5")
+        if c.hier_on:
+            p = self.hier_params
+            sig = hier.signal(self.m5, p)
+            if sig:
+                extra = [HIER_NAMES[f] for f in sig["feats"] if f not in p.need]
+                log.info("HIERARKIA %s | muri %s | %s | SL %.2f TP %.2f | qiri %s", sig["side"], sig["htf"],
+                         "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
+                self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
+                                 f"HIERARKIA: muri {sig['htf']} s'u thye + thyerje strukture M5 + divergjence AO"
+                                 + (f" + {', '.join(extra)}" if extra else "") + " + rejection M5")
+
+    def fixed_trade(self, module, sig, min_rr, min_sl, max_sl, now, positions, note):
+        """Trade me SL/TP fikse per modulet M5 (nje pozicion per modul)."""
+        c = self.cfg
         if self.daily_limit_hit:
             return log.info("  injoruar: u arrit humbja max ditore")
-        if any(self.module_of(q) == "conf" for q in positions):
-            return log.info("  injoruar: moduli i konfluences ka pozicion te hapur")
+        if any(self.module_of(q) == module for q in positions):
+            return log.info("  injoruar: moduli ka pozicion te hapur")
         if conf.weekend_or_offhours(now, c.start_hour_utc, c.end_hour_utc, c.close_friday_utc):
             return log.info("  injoruar: jashte orarit / fundjave")
         bid, ask = self.spot()
@@ -563,13 +590,13 @@ class GoldSniper:
         entry = ask if buy else bid
         if (buy and entry <= sig["sl"]) or (not buy and entry >= sig["sl"]):
             return log.info("  injoruar: cmimi ka kaluar SL-ne")
-        risk = max(abs(entry - sig["sl"]), p.min_sl)
-        if risk > p.max_sl or abs(sig["tp"] - entry) < p.min_rr * risk:
-            return log.info("  injoruar: SL %.2f$ ose TP me pak se %.1fR", risk, p.min_rr)
+        risk = max(abs(entry - sig["sl"]), min_sl)
+        if risk > max_sl or abs(sig["tp"] - entry) < min_rr * risk or (buy and sig["tp"] <= entry) or (
+                not buy and sig["tp"] >= entry):
+            return log.info("  injoruar: SL %.2f$ ose TP me pak se %.1fR", risk, min_rr)
         lots = self.lots_for(risk)
         if lots > 0:
-            self.open_trade(sig["side"], lots, risk, entry, note=f"KONFLUENCE: {levels} + rejection M5",
-                            module="conf", tp_price=sig["tp"])
+            self.open_trade(sig["side"], lots, risk, entry, note=note, module=module, tp_price=sig["tp"])
 
     def manage_stop(self, pid, pos, plan):
         """Break-even dhe trailing stop: SL ndjek cmimin me distance trail_adr x ADR
