@@ -49,7 +49,8 @@ me trendin, jo vetëm kundër tij.
 - **Dalja si snajper (trailing stop)**: pa TP fiks. Kur fitimi arrin 1 × SL, SL-ja shkon në hyrje
   (break-even). Pastaj SL-ja ndjek çmimin më të mirë me distancë **0.4 × ADR (~40$)**, pra trade-i
   mbyllet vetëm kur lëkundja e ditës kthehet vërtet. Kështu boti e kalëron lëvizjen e plotë,
-  si 19 gushti (+203$) ose 2 shtatori.
+  si 19 gushti (+203$) ose 2 shtatori. **Në ditët e trendit** (në drejtimin e trade-it) distanca
+  bëhet **0.8 × ADR**, që trade-i të mos dalë nga një rikthim i zakonshëm i trendit.
 - Vetëm 1 pozicion njëherësh, max 4 trade në ditë, stop nëse humbja ditore arrin 3%.
 - Tregton 01:00–20:00 UTC (= 04:00–23:00 në orën e grafikut IC Markets).
 
@@ -59,25 +60,30 @@ Rregullat u ndërtuan me të dhënat e qershorit–shtatorit. Shkurti–maji nuk
 t'i zgjedhur, prandaj ai është testi i ndershëm ("jashtë mostrës"): si do dilte boti në muaj
 që s'i ka parë kurrë.
 
-| | **Sniper (fillestar)** | TP fiks 1:3 (`TRAIL_ADR=0`) | `MODE=klasik` |
-|---|---|---|---|
-| **Shkurt–maj (jashtë mostrës)** | **+31.3R** (DD 23.8R) | −6.6R | −10.3R |
-| Qershor–shtator (ku u ndërtua) | +81.9R (DD 14.8R) | +49.9R | +28.4R |
-| **8 muaj gjithsej** | **+95.7R** | +35.4R | +17.1R |
-| Trade në ditë | 2.9 | 3.3 | 2.0 |
-| Ditë me ≥ 2 trade | 80% | 89% | 58% |
+| | **Sniper (fillestar)** | Gjuetar trendi (`TRAIL_ADR=0.6`) | TP fiks 1:3 (`TRAIL_ADR=0`) | `MODE=klasik` |
+|---|---|---|---|---|
+| **Shkurt–maj (jashtë mostrës)** | **+36.1R** (DD 20.9R) | +140.6R (DD 15.3R) | −6.6R | −10.3R |
+| Qershor–shtator (ku u ndërtua) | **+84.7R** (DD 14.8R) | +32.1R (DD 14.9R) | +49.9R | +28.4R |
+| **8 muaj gjithsej** | +104.6R (DD 20.9R) | **+152.8R** (DD 23.4R) | +35.4R | +17.1R |
+| Trade në ditë | 2.8 | 2.4 | 3.3 | 2.0 |
+| Ditë me ≥ 2 trade | 79% | 69% | 89% | 58% |
 
-8 muaj, sniper: 495 trade, 87 fitime, 163 break-even, 245 humbje; trade-i më i mirë +22.9R.
+**Sniper (fillestar)** del mirë në të dy periudhat. **Gjuetari i trendit** mban trailing të gjerë
+(0.6 × ADR) në çdo trade: në muajt me trende të mëdha (shkurt–maj) fiton shumë më tepër, p.sh. 20 marsi
++18.5R (gjithë rënia 240$) në vend të +1.9R, por në muajt më të qetë (qershor–shtator) fiton shumë më pak.
+Zgjidhe sipas tregut: vendos `TRAIL_ADR=0.6` në Railway kur ari bën trende të mëdha.
+
+8 muaj, sniper: 488 trade, 87 fitime, 160 break-even, 241 humbje; trade-i më i mirë +25.2R.
 
 Çfarë tregon kjo:
 - Boti mbetet fitimprurës në muajt që s'i ka parë, por **më pak** se në muajt ku u ndërtua.
   Prit rezultate më afër shkurt–majit sesa qershor–shtatorit.
 - **Trailing stop-i është pjesa që funksionon vërtet**: pa të, çdo version humbet jashtë mostrës.
-- Drawdown-i max në 8 muaj ishte **23.8R**. Me 0.5% rrezik kjo është rreth −12% nga maja e llogarisë.
+- Drawdown-i max në 8 muaj ishte **20.9R**. Me 0.5% rrezik kjo është rreth −10% nga maja e llogarisë.
   Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
 - Rezultatet e kaluara nuk garantojnë të ardhmen.
 
-Me 0.5% rrezik për trade, 8 muajt dalin rreth +48%.
+Me 0.5% rrezik për trade, 8 muajt dalin rreth +52% (gjuetari i trendit rreth +76%).
 
 Me trailing boti bën më pak trade, sepse mban një pozicion gjatë një lëvizjeje të madhe.
 Provova të lejoj një pozicion të dytë kur i pari është pa rrezik (`MAX_POSITIONS=2`):
@@ -145,6 +151,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `EARLY_TREND_ADR` | `0` | 8 orët e para ≥ kaq × ADR → ditë trendi (joaktiv; humbi jashtë mostrës) |
 | `ROT_DAY_ADR` | `0.2` | 8 orët e para < kaq × ADR → ditë rotacioni (`0` = joaktiv) |
 | `ROT_TP_ADR` | `0.3` | TP në ditët e rotacionit (× ADR) |
+| `TREND_TRAIL_ADR` | `0.8` | trailing në ditët e trendit, në drejtimin e trade-it (× ADR; `0` = si `TRAIL_ADR`) |
 | `TRAIL_ADR` | `0.4` | distanca e trailing stop (× ADR); `0` = TP fiks me `RR` |
 | `TRAIL_START_R` | `1.0` | trailing fillon pasi fitimi arrin kaq R |
 | `MAX_POSITIONS` | `1` | `2` = pozicion i dytë kur i pari është pa rrezik (në backtest ul fitimin) |

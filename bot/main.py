@@ -82,6 +82,7 @@ class GoldSniper:
         self.my_position_ids = set()
         self.plans = {}  # positionId -> {"sl", "tp" (None me trailing), "risk", "best"}
         self.adr = None  # ADR e fundit (per trailing stop)
+        self.day_kind = ""  # tipi i dites tani: "UP"/"DOWN"/"ROT"/""
         self.last_signal = None
         self.started = utc()
 
@@ -199,6 +200,8 @@ class GoldSniper:
         ind = prepare(bars, self.cfg.strategy)
         if "adr" in ind and ind["adr"][-1] == ind["adr"][-1]:
             self.adr = ind["adr"][-1]
+        if "day" in ind:
+            self.day_kind = ind["day"][-1]
         if self.last_bar_t is None:
             self.last_bar_t = newest.t
             log.info("Boti filloi. Qiri i fundit i mbyllur: %s", utc(newest.t))
@@ -416,7 +419,10 @@ class GoldSniper:
             be = entry + buf if buy else entry - buf
             new_sl = max(new_sl, be) if buy else min(new_sl, be)
         if c.trailing and self.adr and fav >= risk * c.trail_start_r:
-            trail = plan["best"] - c.trail_adr * self.adr if buy else plan["best"] + c.trail_adr * self.adr
+            # dite trendi ne drejtimin e trade-it -> jepi me shume hapesire
+            with_trend = self.day_kind == ("UP" if buy else "DOWN")
+            dist = (c.trend_trail_adr if with_trend and c.trend_trail_adr > 0 else c.trail_adr) * self.adr
+            trail = plan["best"] - dist if buy else plan["best"] + dist
             new_sl = max(new_sl, trail) if buy else min(new_sl, trail)
         new_sl = round(new_sl, 2)
         # levize vetem kur SL permiresohet te pakten 0.5$ (pa spam urdhrash)

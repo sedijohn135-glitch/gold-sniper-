@@ -47,7 +47,8 @@ def run(bars, cfg: Config, verbose=True):
                     be = entry + spread if buy else entry - spread
                     new_sl = max(new_sl, be) if buy else min(new_sl, be)
                 if cfg.trailing and fav >= risk * cfg.trail_start_r and ind["adr"][i] == ind["adr"][i]:
-                    d = cfg.trail_adr * ind["adr"][i]
+                    with_trend = ind.get("day") and ind["day"][i] == ("UP" if buy else "DOWN")
+                    d = (cfg.trend_trail_adr if with_trend and cfg.trend_trail_adr > 0 else cfg.trail_adr) * ind["adr"][i]
                     new_sl = max(new_sl, pos["best"] - d) if buy else min(new_sl, pos["best"] + d)
                 pos["sl"] = new_sl
 
