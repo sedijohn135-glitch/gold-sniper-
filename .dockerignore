@@ -1,0 +1,5 @@
+.git
+__pycache__
+cbot
+*.md
+.env
