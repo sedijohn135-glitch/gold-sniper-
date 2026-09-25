@@ -26,6 +26,11 @@ Rregullat:
 | 2 | Çmimi është ngritur **≥ 0.45 × ADR** nga fundi i fundit dhe bën high të ri të kësaj lëvizjeje | Çmimi ka rënë **≥ 0.45 × ADR** nga maja e fundit dhe bën low të ri |
 | 3 | Refuzim: bisht i gjatë lart (≥40%), **ose** qiri i fortë bearish që mbyllet në 25% e poshtme, **ose** një nga 2 qirinjtë pas majës mbyllet nën trupin e saj | Refuzim: bisht i gjatë poshtë, **ose** qiri i fortë bullish, **ose** një nga 2 qirinjtë pas fundit mbyllet mbi trupin e tij |
 
+**Ditët me trend** (vetëm SELL ose vetëm BUY, si 1 dhe 2 shtator): pasi çmimi ka rënë ≥ 0.45 × ADR
+nga maja dhe s'bën kthim të madh, boti **shet rikthimin e vogël** (pullback 10–35% e ADR) kur ai
+refuzohet, me SL mbi rikthimin. Në ditët me trend lart, blen rënien e vogël. Kështu tregton edhe
+me trendin, jo vetëm kundër tij.
+
 - **SL**: pak mbi majë / nën fund (+0.3 × ATR). Min 3$, max 25$ (nëse del më i madh, trade-i anulohet).
 - **TP**: 3 × SL (Risk:Reward 1:3).
 - **Break-even**: kur fitimi arrin 1 × SL, SL-ja zhvendoset në hyrje.
@@ -34,17 +39,18 @@ Rregullat:
 
 ### Rezultati në 120 ditët e fundit (të dhëna reale M15 nga llogaria jote)
 
-| | **`MODE=sniper`** (fillestar) | `MODE=klasik` (modeli i vjetër) |
-|---|---|---|
-| Trade në ditë (mesatarisht) | **2.9** | 2.4 |
-| Ditë me ≥ 2 trade | **84%** | 70% |
-| Ditë pa asnjë trade (nga 87) | 5 | 8 |
-| Fitime (+3R) / Break-even / Humbje (−1R) | 51 / 84 / 119 | 43 / 66 / 102 |
-| Totali | **+35.6R** | +28.4R |
-| 60 ditët e para / 60 të fundit | +18.8R / +22.9R | +11.7R / +15.7R |
-| Drawdown max | 13.8R | 11.9R |
+| | **`MODE=sniper`** (fillestar) | sniper pa trend (`TREND_ENTRIES=false`) | `MODE=klasik` |
+|---|---|---|---|
+| Trade në ditë (mesatarisht) | **3.4** | 2.9 | 2.4 |
+| Ditë me ≥ 2 trade | **91%** | 84% | 70% |
+| Ditë pa asnjë trade (nga 87) | **3** | 5 | 8 |
+| Fitime (+3R) / Break-even / Humbje (−1R) | 63 / 95 / 138 | 51 / 84 / 119 | 43 / 66 / 102 |
+| Totali | **+52.9R** | +35.6R | +28.4R |
+| 60 ditët e para / 60 të fundit | **+24.8R / +34.1R** | +18.8R / +22.9R | +11.7R / +15.7R |
+| Drawdown max | 17.8R | 13.8R | 11.9R |
+| Seria më e gjatë e humbjeve | 9 | 8 | 8 |
 
-Me 0.5% rrezik për trade, `sniper` del rreth +17.8% në 120 ditë, me drawdown max rreth 7%.
+Me 0.5% rrezik për trade, `sniper` del rreth +26% në 120 ditë, me drawdown max rreth 9%.
 
 Nga 27 majat/fundet që shënove, **19 janë saktësisht majat/fundet që gjen boti** në lëkundjet e ditës,
 dhe në 14 prej tyre boti hyn direkt në trade. Të tjerat i humb kur lëvizja para tyre ishte pak nën 0.45 × ADR
@@ -96,6 +102,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `SWING_REV` | `0.4` | sa × ADR duhet të kthehet çmimi që të konfirmohet një majë/fund |
 | `LEG_MIN_ADR` | `0.45` | lëvizja minimale para majës/fundit (× ADR) |
 | `CONFIRM_BARS` | `2` | sa qirinj pas majës/fundit pritet konfirmimi |
+| `TREND_ENTRIES` | `true` | tregto edhe me trendin në ditët me një drejtim (`false` = vetëm maja/funde) |
+| `PULL_MIN_ADR` / `PULL_MAX_ADR` | `0.10` / `0.35` | madhësia e pullback-ut në ditët me trend (× ADR) |
 | `ADR_DAYS` | `10` | sa ditë për mesataren e lëvizjes ditore |
 | `DRY_RUN` | `false` | `true` = vetëm sinjale në log, pa trade |
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
