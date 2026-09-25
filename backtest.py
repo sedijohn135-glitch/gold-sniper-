@@ -20,6 +20,7 @@ def run(bars, cfg: Config, verbose=True):
     trades = []
     pos = None
     last_entry_i = -10_000
+    per_day = {}
     spread = cfg.backtest_spread
 
     for i in range(len(bars)):
@@ -49,8 +50,8 @@ def run(bars, cfg: Config, verbose=True):
 
         # ---- sinjal ne mbyllje te qirit i -> hyrje ne hapje te i+1 ----
         if pos is None and i + 1 < len(bars) and i - last_entry_i >= cfg.cooldown_bars:
-            hour = datetime.fromtimestamp(bars[i + 1].t / 1000, timezone.utc).hour
-            if not cfg.in_session(hour):
+            nt = datetime.fromtimestamp(bars[i + 1].t / 1000, timezone.utc)
+            if not cfg.in_session(nt.hour) or per_day.get(nt.date(), 0) >= cfg.max_trades_per_day:
                 continue
             sig = detect(bars, i, p, atr, rsi)
             if not sig:
@@ -66,6 +67,7 @@ def run(bars, cfg: Config, verbose=True):
             pos = {"side": sig.side, "entry": entry, "sl": sl, "tp": tp, "risk": risk,
                    "be": False, "t": nb.t, "extreme": sig.extreme}
             last_entry_i = i
+            per_day[nt.date()] = per_day.get(nt.date(), 0) + 1
 
     if verbose:
         for t in trades:

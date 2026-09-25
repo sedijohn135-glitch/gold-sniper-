@@ -60,6 +60,9 @@ class Config:
 
     @classmethod
     def from_env(cls):
+        # MODE=sniper (fillestar): me pak trade, me te mira.
+        # MODE=aktiv: RSI 60/40 -> ~3 trade/dite, por fitim me i vogel ne backtest.
+        aktiv = str(_env("MODE", "sniper")).strip().lower() == "aktiv"
         p = Params(
             lookback=_i("LOOKBACK", 32),
             min_leg_atr=_f("MIN_LEG_ATR", 3.0),
@@ -67,8 +70,8 @@ class Config:
             min_close_pct=_f("MIN_CLOSE_PCT", 50),
             use_rsi=_b("USE_RSI", True),
             rsi_period=_i("RSI_PERIOD", 14),
-            rsi_ob=_f("RSI_OVERBOUGHT", 65),
-            rsi_os=_f("RSI_OVERSOLD", 35),
+            rsi_ob=_f("RSI_OVERBOUGHT", 60 if aktiv else 65),
+            rsi_os=_f("RSI_OVERSOLD", 40 if aktiv else 35),
             atr_period=_i("ATR_PERIOD", 14),
             sl_buffer_atr=_f("SL_BUFFER_ATR", 0.3),
             strong_close_pct=_f("STRONG_CLOSE_PCT", 75),

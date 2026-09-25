@@ -103,6 +103,7 @@ class GoldSniper:
         log.info("XAUUSD symbolId=%s | Valuta e llogarise: %s | Balanca: %.2f | DRY_RUN=%s",
                  self.cfg.symbol_id, self.deposit_asset, self.balance()[0], self.cfg.dry_run)
         c = self.cfg
+        log.info("Modi: %s", "AKTIV" if c.strategy.rsi_ob < 65 else "SNIPER")
         log.info("Parametrat: rrezik %.2f%% | RR 1:%.1f | BE %.1fR | lookback %d | RSI %g/%g | ora %d-%d UTC",
                  c.risk_percent, c.rr, c.break_even_r, c.strategy.lookback,
                  c.strategy.rsi_ob, c.strategy.rsi_os, c.start_hour_utc, c.end_hour_utc)

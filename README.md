@@ -27,16 +27,30 @@ dhe hap trade automatikisht në llogarinë tënde cTrader.
 ### Rezultati në 120 ditët e fundit (të dhëna reale M15 nga llogaria jote)
 
 ```
-Trade: 234 | Fitime: 46 (+3R) | Break-even: 78 | Humbje: 110 (-1R) | Totali: +29.6R
-Drawdown max: ~11R | Seria më e gjatë e humbjeve: 8
+Trade: 211 | Fitime: 43 (+3R) | Break-even: 66 | Humbje: 102 (-1R) | Totali: +28.4R
+Drawdown max: ~12R | Mesatarisht 2.4 trade në ditë
 ```
 
-Me 0.5% rrezik për trade, kjo është rreth +14.8% dhe drawdown max rreth 5.5%.
+Me 0.5% rrezik për trade, kjo është rreth +14% dhe drawdown max rreth 6%.
 
-Nga 13 majat/fundet e shënuara në screenshot (17–25 shtator), boti i zbulon 10.
-Nuk i kap: fundin 4274 të 17 shtatorit (fund më i lartë pas rënies, jo fshirje likuiditeti),
-fundin 4334 të 18 shtatorit (RSI 39, jo ≤ 35) dhe majën 4369 të 23 shtatorit
-(majë e dyfishtë pak më poshtë se maja e mëparshme).
+### Sa trade në ditë? Modi `sniper` ose `aktiv`
+
+| | `MODE=sniper` (fillestar) | `MODE=aktiv` |
+|---|---|---|
+| Filtri RSI | 65 / 35 | 60 / 40 |
+| Trade në ditë (mesatarisht) | 2.4 | 3.0 |
+| Ditë me ≥ 2 trade | 70% | 86% |
+| Ditë pa asnjë trade (nga 87) | 8 | 2 |
+| Totali në 120 ditë | **+28.4R** | +14.8R |
+| 60 ditët e para / 60 të fundit | +11.7R / +15.7R | **−4.1R** / +18.9R |
+
+Më shumë trade = fitim më i vogël: sinjalet shtesë janë më të dobëta.
+Provova edhe pa RSI dhe me konfirmim deri në 3 qirinj: 3.5 trade/ditë, por vetëm +3R deri +4R
+në 120 ditë dhe humbje në 60 ditët e para. Prandaj fillestari mbetet `sniper`.
+
+Nga 27 majat/fundet e shënuara në screenshot (10–25 shtator), boti i zbulon 16.
+Ato që nuk i kap janë kryesisht: fund/majë më e lartë ose më e ulët se e mëparshmja (jo fshirje likuiditeti),
+RSI jo aq ekstrem (p.sh. 39 në vend të ≤ 35), ose kthim që vjen 2–3 qirinj më vonë.
 Disa të tjera i zbulon, por nuk hap trade sepse ka tashmë pozicion të hapur në të njëjtin drejtim,
 është jashtë orarit (00:00 UTC) ose SL-ja del mbi 25$.
 Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
@@ -81,6 +95,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 
 | Variabla | Vlera fillestare | Çfarë bën |
 |---|---|---|
+| `MODE` | `sniper` | `aktiv` = më shumë trade (RSI 60/40), fitim më i vogël në backtest |
 | `DRY_RUN` | `false` | `true` = vetëm sinjale në log, pa trade |
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |
