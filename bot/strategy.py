@@ -9,9 +9,8 @@ MODE=sniper (fillestar) - lekundjet e dites:
   ekstremit mbyllet pertej trupit te tij.
 
   Tipi i dites (ari ben ose trend gjithe diten, ose rotacion BUY-SELL-BUY-SELL):
-    - DITE TRENDI: kur 8 oret e para levizin >= 0.4 x ADR ne nje drejtim, ose ne cdo
-      moment kur cmimi eshte >= 0.5 x ADR larg hapjes se dites: boti tregton vetem ne ate
-      drejtim dhe e kaleron me trailing.
+    - DITE TRENDI: ne cdo moment kur cmimi eshte >= 0.7 x ADR larg hapjes se dites,
+      boti tregton vetem ne ate drejtim dhe e kaleron me trailing.
     - DITE ROTACIONI: pas 8 oreve te para (00:00-08:00 ora e grafikut), nese levizja
       eshte < 0.2 x ADR (81% e ketyre diteve nuk bejne trend): BUY dhe SELL me TP te vogel.
 
@@ -63,8 +62,9 @@ class Params:
     pull_min_adr: float = 0.10     # pullback-u min (x ADR)
     pull_max_adr: float = 0.35     # pullback-u max (x ADR); me i madh = kthim, jo pullback
     day_early_bars: int = 32       # 8 oret e para te dites (qirinj M15) percaktojne tipin e dites
-    early_trend_adr: float = 0.4   # 8 oret e para levizin >= kaq x ADR -> dite trendi (0 = joaktiv)
-    trend_day_adr: float = 0.5     # cmimi tani >= kaq x ADR larg hapjes -> dite trendi (0 = joaktiv)
+    early_trend_adr: float = 0.0   # 8 oret e para levizin >= kaq x ADR -> dite trendi (0 = joaktiv;
+                                   #   ne 8 muaj te dhena e ulte fitimin jashte mostres)
+    trend_day_adr: float = 0.7     # cmimi tani >= kaq x ADR larg hapjes -> dite trendi (0 = joaktiv)
     rot_day_adr: float = 0.2       # levizja e 8 oreve te para < kaq x ADR -> dite rotacioni (0 = joaktiv)
 
 
