@@ -8,6 +8,11 @@ MODE=sniper (fillestar) - lekundjet e dites:
   Refuzimi: bisht i gjate, qiri i forte kthimi, ose nje nga 2 qirinjte pas
   ekstremit mbyllet pertej trupit te tij.
 
+  Tipi i dites nga 8 oret e para (00:00-08:00 ora e grafikut):
+    >= 0.4 x ADR ne nje drejtim -> DITE TRENDI: vetem trade ne ate drejtim (61% e rasteve
+       mbarojne si trend ne ate drejtim); < 0.2 x ADR -> DITE ROTACIONI (81% nuk bejne trend):
+       BUY-SELL-BUY-SELL me TP te vogel.
+
   Ditet me trend (vetem SELL ose vetem BUY): pasi cmimi ka rene >= 0.45 x ADR
   nga maja dhe s'ka kthim te madh, boti shet rikthimin e vogel (pullback
   10-35% e ADR) kur refuzohet. E kunderta ne ditet me trend lart.
@@ -55,6 +60,9 @@ class Params:
     trend_entries: bool = True     # tregto edhe me trendin (pullback) ne ditet me nje drejtim
     pull_min_adr: float = 0.10     # pullback-u min (x ADR)
     pull_max_adr: float = 0.35     # pullback-u max (x ADR); me i madh = kthim, jo pullback
+    day_early_bars: int = 32       # 8 oret e para te dites (qirinj M15) percaktojne tipin e dites
+    trend_day_adr: float = 0.4     # levizja e 8 oreve te para >= kaq x ADR -> dite trendi (0 = joaktiv)
+    rot_day_adr: float = 0.2       # levizja e 8 oreve te para < kaq x ADR -> dite rotacioni (0 = joaktiv)
 
 
 @dataclass
@@ -65,6 +73,7 @@ class Signal:
     stop_loss: float    # cmimi i SL (para kontrollit min/max)
     atr: float
     kind: str = "kthim"  # "kthim" = maje/fund i dites, "trend" = pullback ne diten me trend
+    day: str = ""        # "UP" / "DOWN" = dite trendi, "ROT" = dite rotacioni, "" = ende e paqarte
 
 
 def atr_series(bars, period):
@@ -300,6 +309,23 @@ def detect_trend(bars, i, p: Params, atr, adr, pivots):
     return None
 
 
+def day_types(bars, adr, p: Params):
+    """Per cdo qiri: tipi i dites sipas levizjes se 8 oreve te para (vetem e kaluara)."""
+    out, start = [], {}
+    for j, b in enumerate(bars):
+        d = (b.t + SERVER_OFFSET_MS) // 86_400_000
+        k0 = start.setdefault(d, j)
+        kind = ""
+        if j - k0 >= p.day_early_bars and adr[j] == adr[j]:
+            move = (bars[k0 + p.day_early_bars - 1].c - bars[k0].o) / adr[j]
+            if p.trend_day_adr and abs(move) >= p.trend_day_adr:
+                kind = "UP" if move > 0 else "DOWN"
+            elif p.rot_day_adr and abs(move) < p.rot_day_adr:
+                kind = "ROT"
+        out.append(kind)
+    return out
+
+
 def prepare(bars, p: Params):
     """Llogarit treguesit nje here per gjithe listen e qirinjve."""
     atr = atr_series(bars, p.atr_period)
@@ -307,6 +333,7 @@ def prepare(bars, p: Params):
     if p.mode == "sniper":
         ind["adr"] = adr_series(bars, p.adr_days)
         ind["pivots"] = swing_pivots(bars, ind["adr"], p.swing_rev)
+        ind["day"] = day_types(bars, ind["adr"], p)
     return ind
 
 
@@ -317,5 +344,11 @@ def detect(bars, i, p: Params, ind=None):
         sig = detect_swing(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
         if sig is None and p.trend_entries:
             sig = detect_trend(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
+        if sig is None:
+            return None
+        sig.day = ind["day"][i]
+        # dite trendi: vetem ne drejtimin e dites
+        if (sig.day == "UP" and sig.side == "SELL") or (sig.day == "DOWN" and sig.side == "BUY"):
+            return None
         return sig
     return detect_classic(bars, i, p, ind["atr"], ind["rsi"])

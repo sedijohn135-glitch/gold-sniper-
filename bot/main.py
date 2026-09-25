@@ -220,7 +220,8 @@ class GoldSniper:
         else:
             kind = "MAJE -> SELL" if sig.side == "SELL" else "FUND -> BUY"
         self.last_signal = {"time": utc(bars[i].t), "side": sig.side, "extreme": sig.extreme}
-        log.info("SINJAL %s | ekstremi %.2f | qiri %s", kind, sig.extreme, utc(bars[i].t))
+        day_txt = {"UP": "TREND LART", "DOWN": "TREND POSHTE", "ROT": "ROTACION"}.get(sig.day, "e paqarte")
+        log.info("SINJAL %s | ekstremi %.2f | qiri %s | dita: %s", kind, sig.extreme, utc(bars[i].t), day_txt)
 
         hour = datetime.now(timezone.utc).hour
         if self.daily_limit_hit:
@@ -252,7 +253,10 @@ class GoldSniper:
         lots = self.lots_for(risk)
         if lots <= 0:
             return
-        self.open_trade(sig.side, lots, risk, entry)
+        tp_dist = None
+        if sig.day == "ROT" and c.trailing and c.rot_tp_adr > 0 and self.adr:
+            tp_dist = c.rot_tp_adr * self.adr   # dite rotacioni: merr fitimin e rotacionit
+        self.open_trade(sig.side, lots, risk, entry, tp_dist)
         self.last_entry_bar_t = bars[i].t
 
     def lots_for(self, risk_price):
@@ -271,10 +275,13 @@ class GoldSniper:
             lots = c.min_lots
         return lots
 
-    def open_trade(self, side, lots, risk, ref_price):
+    def open_trade(self, side, lots, risk, ref_price, tp_dist=None):
         c = self.cfg
         volume = int(round(lots * c.lot_size * 100))
-        log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | TP %.2f$", side, lots, volume, risk, risk * c.rr)
+        if tp_dist is None and not c.trailing:
+            tp_dist = risk * c.rr
+        log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | %s", side, lots, volume, risk,
+                 f"TP {tp_dist:.2f}$" if tp_dist else "pa TP (trailing)")
         if c.dry_run:
             log.info("  DRY_RUN: urdhri nuk u dergua")
             self.trades_today += 1
@@ -288,8 +295,8 @@ class GoldSniper:
             "relativeStopLoss": int(round(risk * PRICE_SCALE)),
             "label": c.label, "comment": c.label,
         }
-        if not c.trailing:
-            args["relativeTakeProfit"] = int(round(risk * c.rr * PRICE_SCALE))
+        if tp_dist:
+            args["relativeTakeProfit"] = int(round(tp_dist * PRICE_SCALE))
         pid, rejected = self.send_market(args, before)
         if pid is None and rejected:
             # serveri e refuzoi -> provo pa SL/TP relative, SL vendoset menjehere me amend
@@ -311,7 +318,7 @@ class GoldSniper:
             details = {}
         entry = to_price(find_key(details, "price", "entryPrice", "openPrice")) or ref_price
         sl = entry - risk if side == "BUY" else entry + risk
-        tp = None if c.trailing else round(entry + risk * c.rr if side == "BUY" else entry - risk * c.rr, 2)
+        tp = round(entry + tp_dist if side == "BUY" else entry - tp_dist, 2) if tp_dist else None
         self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry}
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")

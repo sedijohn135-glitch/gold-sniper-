@@ -43,6 +43,7 @@ class Config:
     break_even_r: float = 1.0
     trail_adr: float = 0.4        # trailing stop: distanca x ADR (0 = TP fiks me RR)
     trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
+    rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
     max_daily_loss_pct: float = 3.0
     max_trades_per_day: int = 4
@@ -93,6 +94,8 @@ class Config:
             trend_entries=_b("TREND_ENTRIES", True),
             pull_min_adr=_f("PULL_MIN_ADR", 0.10),
             pull_max_adr=_f("PULL_MAX_ADR", 0.35),
+            trend_day_adr=_f("TREND_DAY_ADR", 0.4),
+            rot_day_adr=_f("ROT_DAY_ADR", 0.2),
         )
         cfg = cls(
             url=_env(["CTRADER_MCP_URL", "URL"], cls.url),
@@ -107,6 +110,7 @@ class Config:
             break_even_r=_f("BREAK_EVEN_R", 1.0),
             trail_adr=_f("TRAIL_ADR", 0.4),
             trail_start_r=_f("TRAIL_START_R", 1.0),
+            rot_tp_adr=_f("ROT_TP_ADR", 0.3),
             max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),
             max_trades_per_day=_i("MAX_TRADES_PER_DAY", 4),
