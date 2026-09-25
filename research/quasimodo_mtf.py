@@ -22,22 +22,7 @@ SRV = 3 * 3_600_000  # ora e serverit IC Markets (UTC+3): H4 niset nga 00:00 e s
 
 
 def aggregate_srv(m5, minutes):
-    """Si aggregate(), por i rreshtuar me oren e serverit (per H4)."""
-    from bot.strategy import Bar
-    ms = minutes * 60_000
-    out, cur, key = [], None, None
-    for b in m5:
-        k = (b.t + SRV) // ms
-        if k != key:
-            if cur:
-                out.append(cur)
-            key = k
-            cur = Bar(k * ms - SRV, b.o, b.h, b.l, b.c)
-        else:
-            cur = Bar(cur.t, cur.o, max(cur.h, b.h), min(cur.l, b.l), b.c)
-    if cur:
-        out.append(cur)
-    return out
+    return aggregate(m5, minutes, SRV)
 
 
 @dataclass

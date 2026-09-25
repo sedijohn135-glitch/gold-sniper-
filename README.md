@@ -63,7 +63,8 @@ me trendin, jo vetëm kundër tij.
   mbyllet vetëm kur lëkundja e ditës kthehet vërtet. Kështu boti e kalëron lëvizjen e plotë,
   si 19 gushti (+203$) ose 2 shtatori. **Në ditët e trendit** (në drejtimin e trade-it) distanca
   bëhet **0.8 × ADR**, që trade-i të mos dalë nga një rikthim i zakonshëm i trendit.
-- Vetëm 1 pozicion njëherësh, max 4 trade në ditë, stop nëse humbja ditore arrin 3%.
+- Vetëm 1 pozicion sniper njëherësh (moduli i konfluencës ka pozicionin e vet), max 4 trade sniper në ditë,
+  stop për të dy modulet nëse humbja ditore arrin 3%.
 - **E premte 19:00 UTC (22:00 ora e grafikut):** mbyll gjithçka dhe s'hap trade të reja deri të hënën.
   Pa këtë, një trade i së premtes mbahej gjithë fundjavën dhe e hënën (rrezik gap-i të hënën në mëngjes).
 - Tregton 01:00–20:00 UTC (= 04:00–23:00 në orën e grafikut IC Markets).
@@ -110,6 +111,40 @@ Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade t�
 
 Backtest-in mund ta rilidhësh vetë: `python backtest.py 120`
 
+### Moduli i dytë: KONFLUENCA (analiza jote me shumë kohë)
+
+Kjo është metoda jote e kthyer në rregull: një nivel **H1/H4** + zona **fresh** (të paprekura)
+të kohëve të ulëta në të njëjtin vend + trendline M30 + **rejection në M5**.
+
+- Çdo 5 minuta boti lexon qirinjtë M5 dhe prej tyre ndërton M15, M30, H1 dhe H4.
+- Në çdo kohë gjen zonat supply/demand (qiri bazë para një lëvizjeje ≥ 1.5 × ATR), edhe zonat
+  e thyera që kthehen në anën tjetër (demand i thyer → supply), dhe trendline-t M30 nga mbylljet.
+- Një zonë vlen vetëm deri në prekjen e parë (**fresh / unmitigated**) dhe jo më e vjetër se 10 ditë.
+- **Hyrja:** një qiri M5 me wick ≥ 50% prek njëkohësisht **≥ 4 nivele** (kohë të ndryshme + trendline),
+  të paktën njëri H1 ose H4, dhe mbyllet në gjysmën tjetër të qirit → hyrje në mbylljen e qirit.
+- **SL:** 0.5$ pas wick-ut të rejection-it (max 20$). **TP:** niveli fresh më i afërt përballë
+  (zonë M15/M30/H1/H4 ose trendline), vetëm nëse është të paktën **3R** larg; përndryshe s'ka trade.
+- Ka pozicionin e vet (label `GoldSniper-C`), të pavarur nga moduli sniper. SL dhe TP janë fikse:
+  pa break-even dhe pa trailing. Respekton orarin, spread-in, limitin ditor dhe mbylljen e së premtes.
+- Në Telegram mesazhi tregon nivelet, p.sh. `KONFLUENCE: H1+M15+M30+TL + rejection M5`.
+
+| 8 muaj (M5 nga llogaria) | Trade | Rezultati | Shk–maj | Qer–sht |
+|---|---|---|---|---|
+| Konfluencë ≥ 2 nivele | 319 | −9.6R | | |
+| Konfluencë ≥ 3 nivele | 161 | +19.8R | | |
+| **Konfluencë ≥ 4 nivele** (fillestari) | **64** | **+23.3R** (DD 11.0R) | +13.7R | +9.6R |
+| Sniper vetëm | 471 | +150.3R (DD 21.4R) | +97.9R | +52.4R |
+| **Sniper + konfluencë bashkë** | **535** | **+173.7R (DD 20.0R)** | +111.6R | +62.0R |
+
+Sa më shumë nivele bashkohen, aq më mirë del — pikërisht si në analizën tënde.
+Bashkë me sniper-in fitimi rritet, drawdown-i ulet dhe muaji më i keq bëhet +11.4R (në vend të +4.0R);
+të 8 muajt fitimprurës. Por vetë moduli ka muaj me humbje (mars −5.0R, prill −4.0R, shtator −1.8R)
+dhe vetëm ~2 trade në javë, prandaj 64 trade janë ende pak për një gjykim të sigurt.
+Nuk i kap të gjitha shembujt e tu: kur një setup ka më pak se 4 nivele ose TP-ja është nën 3R, e lë.
+Për ta fikur: `CONFLUENCE=false`.
+
+Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca).
+
 ## Vendosja në Railway (nga telefoni)
 
 1. Hap **railway.com** → *Login with GitHub*.
@@ -140,7 +175,7 @@ Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
 | Mesazhi | Kur |
 |---|---|
 | 🟢 Gold Sniper u nis | pas çdo nisjeje/rinisjeje në Railway |
-| 🎯 BUY / SELL | hapet një trade (çmimi, SL, TP ose trailing, tipi i ditës) |
+| 🎯 BUY / SELL | hapet një trade (çmimi, SL, TP ose trailing, tipi i ditës ose nivelet e konfluencës) |
 | 🔒 SL në hyrje | trade-i s'mund të humbasë më |
 | 📈 Fitim i siguruar +XR | SL-ja ngjitet çdo +2R |
 | ✅ / ❌ U mbyll | rezultati në R dhe në EUR, balanca e re |
@@ -208,6 +243,9 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `USE_RSI` | `true` | vetëm `klasik`: çaktivizo RSI me `false` |
 | `STRONG_CLOSE_PCT` | `75` | qiri i fortë kthimi pa bisht (`0` = joaktiv) |
 | `EQUAL_TOL_ATR` | `0` | lejon majë/fund të dyfishtë (p.sh. `0.2`); në backtest ul fitimin |
+| `CONFLUENCE` | `true` | moduli i dytë i konfluencës (`false` = vetëm sniper) |
+| `CONF_MIN_LEVELS` | `4` | sa nivele fresh duhet të bashkohen (3 = më shumë trade, më pak fitim për trade) |
+| `CONF_RR` | `3.0` | TP i konfluencës duhet të jetë të paktën kaq R larg |
 
 Llogaria jote demo ka balancë shumë të madhe, prandaj me 0.5% rrezik loti del gjithmonë
 te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dëshirës.
@@ -218,8 +256,12 @@ te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dësh
 bot/main.py        boti live (cikli, urdhrat, break-even, limiti ditor, faqja e statusit)
 bot/strategy.py    zbulimi i majave/fundeve
 bot/mcp_client.py  lidhja me cTrader Trading MCP
-bot/data.py        marrja e qirinjve M15
+bot/data.py        marrja e qirinjve (M15, M5)
+bot/zones.py       zonat supply/demand fresh, zonat e thyera (flip), swing-et
+bot/confluence.py  moduli i konfluences (H1/H4 + zona fresh + trendline + rejection M5)
+bot/telegram.py    njoftimet dhe komanda /status
 bot/config.py      parametrat nga variablat e mjedisit
 backtest.py        backtest me të dhënat reale
+research/          prototipet e setup-eve (Quasimodo, trendline 3rd touch, konfluenca)
 cbot/GoldSniper.cs modeli klasik si cBot për cTrader Desktop (opsionale, nëse ke kompjuter)
 ```

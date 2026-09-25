@@ -47,6 +47,9 @@ class Config:
     trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
     trend_trail_adr: float = 0.8  # ne dite trendi ne drejtimin e trade-it: trailing me i gjere (x ADR; 0 = si trail_adr)
     sticky_trend: bool = True     # trade-i qe njihet si trend mbetet i tille deri ne mbyllje
+    conf_on: bool = True          # moduli i konfluences (zona fresh ne shume kohe + rejection M5)
+    conf_min_levels: int = 4
+    conf_rr: float = 3.0
     close_friday_utc: int = 19    # te premten ne kete ore UTC mbyll gjithcka, pa trade te reja deri te henen (-1 = joaktiv)
     rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
@@ -128,6 +131,9 @@ class Config:
             trend_trail_adr=_f("TREND_TRAIL_ADR", 0.8),
             sticky_trend=_b("STICKY_TREND", True),
             close_friday_utc=_i("CLOSE_FRIDAY_UTC", 19),
+            conf_on=_b("CONFLUENCE", True),
+            conf_min_levels=_i("CONF_MIN_LEVELS", 4),
+            conf_rr=_f("CONF_RR", 3.0),
             rot_tp_adr=_f("ROT_TP_ADR", 0.3),
             max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),

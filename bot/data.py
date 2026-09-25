@@ -7,8 +7,8 @@ MAX_RANGE_MS = 719 * 3600 * 1000  # serveri pranon max 720h per thirrje
 PAGE_SIZE = 1000
 
 
-def fetch_bars(client, symbol_id, from_ms, to_ms):
-    """Kthen qirinjte M15 te renditur nga me i vjetri, pa dublikata."""
+def fetch_bars(client, symbol_id, from_ms, to_ms, period="M_15"):
+    """Kthen qirinjte (M15 si fillim) te renditur nga me i vjetri, pa dublikata."""
     # Serveri kthen max `count` qirinjte me te fundit te intervalit,
     # prandaj ecim mbrapsht nga `to_ms` deri tek `from_ms`.
     bars = {}
@@ -16,7 +16,7 @@ def fetch_bars(client, symbol_id, from_ms, to_ms):
     while end > from_ms:
         start = max(from_ms, end - MAX_RANGE_MS)
         res = client.call("get_trendbars", {
-            "symbolId": symbol_id, "period": "M_15",
+            "symbolId": symbol_id, "period": period,
             "fromTimestamp": str(start), "toTimestamp": str(end), "count": PAGE_SIZE,
         })
         chunk = res.get("trendbars", [])

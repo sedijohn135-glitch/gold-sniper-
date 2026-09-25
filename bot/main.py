@@ -15,6 +15,7 @@ from collections import deque
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import confluence as conf
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .mcp_client import PRICE_SCALE, McpClient, McpError
@@ -104,6 +105,10 @@ class GoldSniper:
         self.day_stats = {"opened": 0, "closed": 0, "wins": 0, "r": 0.0, "pnl": 0.0}
         self.last_balance = self.last_equity = None
         self.open_summary = []   # pozicionet e hapura (per /status)
+        self.conf_label = cfg.label + "-C"
+        self.conf_params = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
+        self.m5 = []             # qirinjte M5 per modulin e konfluences
+        self.last_m5_t = None
         self.error_since = None  # kur filloi problemi i fundit me cTrader
         self.error_sent = 0.0
 
@@ -138,6 +143,9 @@ class GoldSniper:
         log.info("Rreziku %.2f%% | Dalja: %s | BE %.1fR | ora %d-%d UTC",
                  c.risk_percent, exit_txt, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
         if s.mode == "sniper":
+            if c.conf_on:
+                log.info("Moduli KONFLUENCE: >= %d nivele fresh (me te pakten nje H1/H4) + rejection M5 | TP >= %.1fR",
+                         c.conf_min_levels, c.conf_rr)
             log.info("Tipi i dites: TREND kur cmimi >= %.1f x ADR nga hapja (trailing %.1f x ADR%s) | "
                      "ROTACION kur eficienca pas 6 oreve < %.2f (TP %.1f x ADR)",
                      s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
@@ -188,10 +196,18 @@ class GoldSniper:
             label = find_key(p, "label")
             comment = find_key(p, "comment")
             sym = find_key(p, "symbolId")
-            if pid in self.my_position_ids or label == self.cfg.label or (
-                    comment == self.cfg.label and sym == self.cfg.symbol_id):
+            if pid in self.my_position_ids or label in (self.cfg.label, self.conf_label) or (
+                    comment in (self.cfg.label, self.conf_label) and sym == self.cfg.symbol_id):
                 out.append(p)
         return out
+
+    def module_of(self, pos):
+        """"main" = moduli sniper, "conf" = moduli i konfluences."""
+        plan = self.plans.get(find_key(pos, "positionId"))
+        if plan and plan.get("module"):
+            return plan["module"]
+        is_conf = self.conf_label in (find_key(pos, "label"), find_key(pos, "comment"))
+        return "conf" if is_conf else "main"
 
     # ------------------------------------------------------------ loop
     def run(self):
@@ -252,7 +268,13 @@ class GoldSniper:
             self.check_closed(positions)
         self.manage(positions)
         self.check_daily_loss(positions)
+        if self.cfg.conf_on:
+            try:
+                self.confluence_tick(now, positions)
+            except McpError as e:
+                log.error("Konfluenca: gabim cTrader: %s", e)
         self.open_summary = [
+            f"{'[K] ' if self.module_of(p) == 'conf' else ''}"
             f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
             f" @ {to_price(find_key(p, 'price', 'entryPrice', 'openPrice')) or 0:.2f}"
             f" | SL {to_price(find_key(p, 'stopLoss')) or 0:.2f}" for p in positions]
@@ -299,6 +321,7 @@ class GoldSniper:
             return log.info("  injoruar: u arrit humbja max ditore")
         if self.trades_today >= c.max_trades_per_day:
             return log.info("  injoruar: %d trade sot (max)", self.trades_today)
+        positions = [q for q in positions if self.module_of(q) == "main"]
         if positions:
             def risk_free(q):
                 e, sl = to_price(find_key(q, "price", "entryPrice", "openPrice")), to_price(find_key(q, "stopLoss"))
@@ -348,16 +371,20 @@ class GoldSniper:
             lots = c.min_lots
         return lots
 
-    def open_trade(self, side, lots, risk, ref_price, tp_dist=None, note=""):
+    def open_trade(self, side, lots, risk, ref_price, tp_dist=None, note="", module="main", tp_price=None):
         c = self.cfg
         volume = int(round(lots * c.lot_size * 100))
+        label = self.conf_label if module == "conf" else c.label
+        if tp_price is not None:
+            tp_dist = abs(tp_price - ref_price)
         if tp_dist is None and not c.trailing:
             tp_dist = risk * c.rr
         log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | %s", side, lots, volume, risk,
                  f"TP {tp_dist:.2f}$" if tp_dist else "pa TP (trailing)")
         if c.dry_run:
             log.info("  DRY_RUN: urdhri nuk u dergua")
-            self.trades_today += 1
+            if module == "main":
+                self.trades_today += 1
             self.tg.send(f"🧪 DRY_RUN: do hapej {side} {lots:.2f} lot @ {ref_price:.2f}\n{note}\n"
                          f"SL {risk:.2f}$ | " + (f"TP {tp_dist:.2f}$" if tp_dist else "trailing"))
             return
@@ -368,7 +395,7 @@ class GoldSniper:
         args = {
             "symbolId": c.symbol_id, "orderType": "MARKET", "tradeSide": side, "volume": volume,
             "relativeStopLoss": int(round(risk * PRICE_SCALE)),
-            "label": c.label, "comment": c.label,
+            "label": label, "comment": label,
         }
         if tp_dist:
             args["relativeTakeProfit"] = int(round(tp_dist * PRICE_SCALE))
@@ -385,7 +412,8 @@ class GoldSniper:
             return
 
         self.my_position_ids.add(pid)
-        self.trades_today += 1
+        if module == "main":
+            self.trades_today += 1
         time.sleep(1)
         try:
             details = self.client.call("get_position_details", {"positionId": pid})
@@ -395,6 +423,8 @@ class GoldSniper:
         entry = to_price(find_key(details, "price", "entryPrice", "openPrice")) or ref_price
         sl = entry - risk if side == "BUY" else entry + risk
         tp = round(entry + tp_dist if side == "BUY" else entry - tp_dist, 2) if tp_dist else None
+        if tp_price is not None:
+            tp = round(tp_price, 2)  # konfluenca: TP ne nivelin e zones/trendline-it
         bal_open = self.last_balance
         try:
             bal_open = self.balance()[0]
@@ -402,7 +432,8 @@ class GoldSniper:
             pass
         self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry,
                            "side": side, "entry": entry, "lots": lots, "bal_open": bal_open,
-                           "opened": int(time.time() * 1000), "locked_r": 0}
+                           "opened": int(time.time() * 1000), "locked_r": 0,
+                           "module": module, "fixed": module == "conf"}
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
@@ -411,7 +442,8 @@ class GoldSniper:
             f"🎯 {'🟢 BUY' if side == 'BUY' else '🔴 SELL'} XAUUSD {lots:.2f} lot @ {entry:.2f}\n"
             f"{note}\n"
             f"SL {sl:.2f} ({risk:.2f}$, rrezik ~{risk_money:,.2f} {self.deposit_asset})\n"
-            + (f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
+            + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
+               f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
         self.protect(pid, details)
 
     def send_market(self, args, before):
@@ -478,7 +510,66 @@ class GoldSniper:
             if (plan is not None and not plan.get("ok")) or find_key(pos, "stopLoss") is None:
                 self.protect(pid, pos)
                 continue
+            if self.module_of(pos) == "conf":
+                # konfluenca: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
+                if plan is None:
+                    entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
+                    sl = to_price(find_key(pos, "stopLoss")) or entry
+                    self.plans[pid] = {"sl": sl, "tp": to_price(find_key(pos, "takeProfit")),
+                                       "risk": abs(entry - sl) or 1.0, "best": entry, "ok": True,
+                                       "side": side_of(pos), "entry": entry,
+                                       "lots": (find_key(pos, "volume") or 0) / (self.cfg.lot_size * 100),
+                                       "bal_open": self.last_balance, "opened": int(time.time() * 1000),
+                                       "module": "conf", "fixed": True}
+                continue
             self.manage_stop(pid, pos, plan)
+
+    # ------------------------------------------------------------ konfluenca
+    def confluence_tick(self, now, positions):
+        """Cdo 5 minuta: zonat fresh M5-H4 + trendline M30; rejection ne M5 -> trade me SL/TP fikse."""
+        c, p = self.cfg, self.conf_params
+        if self.last_m5_t is not None and now < self.last_m5_t + 2 * conf.TF["M5"] + 5000:
+            return
+        # 12 dite M5 herën e pare; pastaj vetem oret e fundit
+        since = now - 12 * 86_400_000 if not self.m5 else self.m5[-1].t - 3_600_000
+        fresh = fetch_bars(self.client, c.symbol_id, since, now, "M_5")
+        merged = {b.t: b for b in self.m5}
+        merged.update({b.t: b for b in fresh})
+        self.m5 = [merged[k] for k in sorted(merged) if k >= now - 12 * 86_400_000 and k + conf.TF["M5"] <= now]
+        if not self.m5:
+            return
+        newest = self.m5[-1]
+        if self.last_m5_t is None or newest.t <= self.last_m5_t:
+            self.last_m5_t = self.last_m5_t or newest.t
+            return
+        self.last_m5_t = newest.t
+        ind = conf.prepare(self.m5, p)
+        sig = conf.evaluate(newest, ind["adr"][-1], conf.active_zones(ind["zones"], newest, p), ind["lines"], p)
+        if not sig:
+            return
+        levels = "+".join(sig["levels"])
+        log.info("KONFLUENCE %s | nivele %s | SL %.2f TP %.2f | qiri %s", sig["side"], levels, sig["sl"], sig["tp"],
+                 utc(newest.t))
+        if self.daily_limit_hit:
+            return log.info("  injoruar: u arrit humbja max ditore")
+        if any(self.module_of(q) == "conf" for q in positions):
+            return log.info("  injoruar: moduli i konfluences ka pozicion te hapur")
+        if conf.weekend_or_offhours(now, c.start_hour_utc, c.end_hour_utc, c.close_friday_utc):
+            return log.info("  injoruar: jashte orarit / fundjave")
+        bid, ask = self.spot()
+        if ask - bid > c.max_spread:
+            return log.info("  injoruar: spread %.2f", ask - bid)
+        buy = sig["side"] == "BUY"
+        entry = ask if buy else bid
+        if (buy and entry <= sig["sl"]) or (not buy and entry >= sig["sl"]):
+            return log.info("  injoruar: cmimi ka kaluar SL-ne")
+        risk = max(abs(entry - sig["sl"]), p.min_sl)
+        if risk > p.max_sl or abs(sig["tp"] - entry) < p.min_rr * risk:
+            return log.info("  injoruar: SL %.2f$ ose TP me pak se %.1fR", risk, p.min_rr)
+        lots = self.lots_for(risk)
+        if lots > 0:
+            self.open_trade(sig["side"], lots, risk, entry, note=f"KONFLUENCE: {levels} + rejection M5",
+                            module="conf", tp_price=sig["tp"])
 
     def manage_stop(self, pid, pos, plan):
         """Break-even dhe trailing stop: SL ndjek cmimin me distance trail_adr x ADR

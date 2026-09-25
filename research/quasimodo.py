@@ -8,59 +8,7 @@ from datetime import datetime, timezone
 
 
 from bot.strategy import Bar, atr_series  # ekzekuto nga rrenja e repo-s: python -m research.quasimodo
-
-
-def aggregate(m5, minutes):
-    ms = minutes * 60_000
-    out, cur, key = [], None, None
-    for b in m5:
-        k = b.t // ms
-        if k != key:
-            if cur: out.append(cur)
-            key = k
-            cur = Bar(k * ms, b.o, b.h, b.l, b.c)
-        else:
-            cur = Bar(cur.t, cur.o, max(cur.h, b.h), min(cur.l, b.l), b.c)
-    if cur: out.append(cur)
-    return out
-
-
-@dataclass
-class Zone:
-    kind: str      # "S" supply, "D" demand
-    lo: float
-    hi: float
-    known: int     # koha (ms) kur zona njihet (mbyllja e qirinjve te levizjes)
-    dead: int = 2**62  # koha kur zona prishet (mbyllje pertej saj)
-    touches: int = 0
-    first_touch: int = 2**62  # koha e prekjes se pare pas krijimit (zona "fresh" deri atehere)
-
-
-def find_zones(bars, tf_ms, disp=1.5, look=3, atr_n=14):
-    atr = atr_series(bars, atr_n)
-    zones = []
-    for j in range(atr_n, len(bars) - look):
-        a = atr[j]
-        if a != a: continue
-        b = bars[j]
-        nxt = bars[j + 1:j + 1 + look]
-        # supply: nga baza (j) renie e forte
-        if min(x.l for x in nxt) <= b.l - disp * a and b.h >= max(x.h for x in bars[j + 1:j + 2]):
-            z = Zone("S", min(b.o, b.c), max(b.h, nxt[0].h), bars[j + look].t + tf_ms)
-            zones.append(z)
-        if max(x.h for x in nxt) >= b.h + disp * a and b.l <= min(x.l for x in bars[j + 1:j + 2]):
-            z = Zone("D", min(b.l, nxt[0].l), max(b.o, b.c), bars[j + look].t + tf_ms)
-            zones.append(z)
-    # prishja: mbyllje e nje qiri pertej zones pasi njihet; prekja e pare = mitigimi
-    for z in zones:
-        for x in bars:
-            if x.t + tf_ms <= z.known: continue
-            if z.first_touch == 2**62 and ((z.kind == "S" and x.h >= z.lo) or (z.kind == "D" and x.l <= z.hi)):
-                z.first_touch = x.t
-            if (z.kind == "S" and x.c > z.hi) or (z.kind == "D" and x.c < z.lo):
-                z.dead = x.t + tf_ms
-                break
-    return zones
+from bot.zones import Zone, aggregate, find_zones, swings
 
 
 def ao_series(bars):
@@ -72,19 +20,6 @@ def ao_series(bars):
         if i >= 5: s5 -= med[i - 5]
         if i >= 34: s34 -= med[i - 34]
         if i >= 33: out[i] = s5 / 5 - s34 / 34
-    return out
-
-
-def swings(bars, k=2):
-    """pikat swing te konfirmuara: (indeksi i konfirmimit, indeksi, 'H'/'L', cmimi)"""
-    out = []
-    for i in range(k, len(bars) - k):
-        h, l = bars[i].h, bars[i].l
-        if all(h > bars[i - d].h for d in range(1, k + 1)) and all(h >= bars[i + d].h for d in range(1, k + 1)):
-            out.append((i + k, i, "H", h))
-        if all(l < bars[i - d].l for d in range(1, k + 1)) and all(l <= bars[i + d].l for d in range(1, k + 1)):
-            out.append((i + k, i, "L", l))
-    out.sort()
     return out
 
 
