@@ -8,7 +8,7 @@
 | 1 | **H1 supply + M5 Quasimodo (HH/LL) + divergjencë AO**. Hyrje me rejection M5 te left shoulder, SL mbi rejection, TP demand M15 poshtë | `research/quasimodo.py` | 109 trade, +20.8R (me AO vetëm 7–8 trade) | kërkim; i kap 25 shtatorin (SELL +5.7R, BUY +3.3R) |
 | 2 | **H4 support + divergjencë AO M30 + QM M15 që thyen majën**. Kthim te QM, rejection M5, hyrje në mbyllje, SL nën wick, TP supply M5 i pamitiguar | `research/quasimodo_mtf.py` | 16 trade, −6.3R | kërkim |
 | 3 | **Trendline 3rd touch M30 + thyerja e supply-t më të afërt M30**. Retest me rejection M30, hyrje në mbyllje, SL nën supply-in e thyer, TP supply M30 fresh lart | `research/trendline3.py` | 6–16 trade, 0 deri +6R | kërkim (shumë i rrallë) |
-| 4 | **H1 supply + demand M1 i thyer → supply M5 fresh**. Retest në të njëjtin nivel, rejection M5 me wick, sell menjëherë, TP te prekja e 3-të e trendline-it | `bot/confluence.py` (≥ 4 nivele fresh) | 64 trade, +23.3R | **live** (`GoldSniper-C`) |
+| 4 | **H1 supply + demand M1 i thyer → supply M5 fresh**. Retest në të njëjtin nivel, rejection M5 me wick, sell menjëherë, TP te prekja e 3-të e trendline-it | `bot/confluence.py` (≥ 4 nivele fresh) | 64 trade, +23.3R; me qirinj M1 truri e kap 25 shtatorin (SELL 4293.95, thyerje M1+M5+M15+M30, 8 konfluenca) | **live** (`GoldSniper-C`) |
 | 5 | **Pse H1/H4:** nëse çmimi s'e thyen dot murin H1/H4, tregu s'ka forcë. Pastaj konfirmimet: zonë M5 e thyer, QM, trendline, divergjencë AO | `bot/hierarchy.py` (muri H1 + thyerje strukture M5 + AO) | 233 trade, +95.6R, DD 14.8R | **live** (`GoldSniper-H`) |
 | 6 | **H4 support i fortë + divergjencë AO H1 + thyerja e supply-t M15 më të afërt**. Retest me wick në M15 → hyrje, SL nën qirin e rejection-it, TP1/TP2 supply D1, TP3 supply-i dominant lart | `research/swing.py` | 41 trade, 5 fitime, +34.7R (pa 4 gushtin −21R) | kërkim; kap 4 gushtin saktë |
 
@@ -48,5 +48,7 @@ ende s'është kthyer në rregull. Shkurt–maji humb në çdo variant.
 - Retest-i i zonës së thyer (SBR/RBS) vetëm si trigger s'mjafton. Thyerja e strukturës M5 (me AO) është më e fortë.
 - **Cilësia e konfluencës ka rëndësi, jo numri.** Setup-et me 7 konfluenca s'fitojnë më shumë se ato me 2.
   Konfluencat me vlerë: zona H1 fresh, trendline HTF te maja/fundi, AO kur maja bie në murin H1.
+- **Thyerja vetëm në M1 s'mjafton.** M1 thyhet pothuajse gjithmonë (99% e kandidatëve), dhe kur thyhet vetëm M1
+  pa M5/M15/M30, rezultati humb (−90R deri −143R). M1 vlen kur thyhen edhe kohët më të mëdha, si më 25 shtator.
 - Një "tru" që mëson peshat e konfluencave nga e kaluara s'e parashikoi periudhën tjetër. Rregullat e thjeshta
   dhe të qëndrueshme (modulet live) mbajnë më mirë se sistemet me shumë pjesë.

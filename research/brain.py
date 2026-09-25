@@ -50,6 +50,7 @@ class P:
     rej_wick: float = 0.5
     sl_buf: float = 0.5
     max_sl: float = 20.0
+    brk_tfs: tuple = ("M1", "M5", "M15", "M30")   # ku kerkohet thyerja LTF (M1 vetem kur jepen qirinjte M1)
     origin_h: float = 12
     tp_buf: float = 1.0
 
@@ -101,7 +102,7 @@ def _ao_at(h, m5, tm5, i5, t):
     return sum(med[-5:]) / 5 - sum(med) / 34, k
 
 
-def prepare(m5, p: P):
+def prepare(m5, p: P, m1=None):
     S = {"M5": _series(m5, 5), "M15": _series(m5, 15), "M30": _series(m5, 30),
          "H1": _series(m5, 60), "H4": _series(m5, 240, SRV)}
     zones = []
@@ -113,7 +114,13 @@ def prepare(m5, p: P):
         zones += allz
     zones.sort(key=lambda z: z.known)
     lines = trendlines(S["M30"]["bars"], TF["M30"]) + trendlines(S["H1"]["bars"], TF["H1"])
-    return dict(S=S, zones=zones, lines=lines, adr=adr_series(m5, 10), tm5=[b.t for b in m5])
+    # zonat M1 te thyera (demand M1 i thyer -> supply), vetem per thyerjen LTF
+    m1f = []
+    if m1:
+        base = find_zones(m1, 60_000, p.disp, tf="M1")
+        m1f = sorted(with_flips(base, m1, 60_000)[len(base):], key=lambda z: z.known)
+    return dict(S=S, zones=zones, lines=lines, adr=adr_series(m5, 10), tm5=[b.t for b in m5],
+                m1f=m1f, m1k=[z.known for z in m1f])
 
 
 def candidates(m5, p: P, ind, start=0):
@@ -166,8 +173,10 @@ def candidates(m5, p: P, ind, start=0):
             f = set()
             # 1. thyerja LTF (e detyrueshme): zone e kundert e thyer pas kokes -> zone e re "kind"
             brk_tf = set()
-            for z in active:
-                if z.kind == kind and getattr(z, "flip", False) and z.tf in ("M5", "M15", "M30") and \
+            m1z = ind["m1f"][bisect.bisect_right(ind["m1k"], ht):bisect.bisect_right(ind["m1k"], t_close)] \
+                if "M1" in p.brk_tfs else []
+            for z in active + m1z:
+                if z.kind == kind and getattr(z, "flip", True) and z.tf in p.brk_tfs and \
                         ht < z.known <= t_close and z.dead > b.t and ((sell and z.hi < head) or (not sell and z.lo > head)):
                     brk_tf.add(z.tf)
                     if (sell and b.h >= z.lo - 0.5 and b.c <= z.hi) or (not sell and b.l <= z.hi + 0.5 and b.c >= z.lo):
@@ -288,3 +297,10 @@ if __name__ == "__main__":
 # 4. Kombinimi tl + snd: pozitiv ne 8/8 variante dhe ne te dy periudhat ne secilin
 #    (koka 8h, near: 23 trade, 7 fitime, +34.0R, DD 4.0R; shk-maj +22.9R, qer-sht +11.0R), por
 #    3 trade-t me te mira japin 32.4R (31 mars +17.2R). Shume pak trade per botin live.
+# 5. Thyerja ne M1 (qirinjte M1 nga cTrader: bot.data.fetch_bars(..., "M_1"), 237 274 qirinj):
+#    shembulli i 25 shtatorit (demand M1 i thyer -> supply M5) kapet: SELL 16:10 UTC @ 4293.95,
+#    SL 4300.84, thyerje M1+M5+M15+M30, 8 konfluenca (piket me te larta).
+#    Por kandidatet ku thyhet VETEM M1 (pa M5/M15/M30) humbin ne cdo variant: TP near -90R deri
+#    -143R, TP origin -77R deri -122R. M1 thyhet pothuajse gjithmone (9 617 nga 9 716 kandidate),
+#    prandaj vete s'eshte konfirmim. Te tl + snd, trade-t shtese vetem-M1: 12 trade, -5.3R.
+#    Konfirmimi absolut mbetet thyerja ne M5/M15/M30; M1 ndihmon vetem kur thyhen edhe keto.
