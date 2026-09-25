@@ -8,10 +8,12 @@ MODE=sniper (fillestar) - lekundjet e dites:
   Refuzimi: bisht i gjate, qiri i forte kthimi, ose nje nga 2 qirinjte pas
   ekstremit mbyllet pertej trupit te tij.
 
-  Tipi i dites nga 8 oret e para (00:00-08:00 ora e grafikut):
-    >= 0.4 x ADR ne nje drejtim -> DITE TRENDI: vetem trade ne ate drejtim (61% e rasteve
-       mbarojne si trend ne ate drejtim); < 0.2 x ADR -> DITE ROTACIONI (81% nuk bejne trend):
-       BUY-SELL-BUY-SELL me TP te vogel.
+  Tipi i dites (ari ben ose trend gjithe diten, ose rotacion BUY-SELL-BUY-SELL):
+    - DITE TRENDI: kur 8 oret e para levizin >= 0.4 x ADR ne nje drejtim, ose ne cdo
+      moment kur cmimi eshte >= 0.5 x ADR larg hapjes se dites: boti tregton vetem ne ate
+      drejtim dhe e kaleron me trailing.
+    - DITE ROTACIONI: pas 8 oreve te para (00:00-08:00 ora e grafikut), nese levizja
+      eshte < 0.2 x ADR (81% e ketyre diteve nuk bejne trend): BUY dhe SELL me TP te vogel.
 
   Ditet me trend (vetem SELL ose vetem BUY): pasi cmimi ka rene >= 0.45 x ADR
   nga maja dhe s'ka kthim te madh, boti shet rikthimin e vogel (pullback
@@ -61,7 +63,8 @@ class Params:
     pull_min_adr: float = 0.10     # pullback-u min (x ADR)
     pull_max_adr: float = 0.35     # pullback-u max (x ADR); me i madh = kthim, jo pullback
     day_early_bars: int = 32       # 8 oret e para te dites (qirinj M15) percaktojne tipin e dites
-    trend_day_adr: float = 0.4     # levizja e 8 oreve te para >= kaq x ADR -> dite trendi (0 = joaktiv)
+    early_trend_adr: float = 0.4   # 8 oret e para levizin >= kaq x ADR -> dite trendi (0 = joaktiv)
+    trend_day_adr: float = 0.5     # cmimi tani >= kaq x ADR larg hapjes -> dite trendi (0 = joaktiv)
     rot_day_adr: float = 0.2       # levizja e 8 oreve te para < kaq x ADR -> dite rotacioni (0 = joaktiv)
 
 
@@ -310,18 +313,24 @@ def detect_trend(bars, i, p: Params, atr, adr, pivots):
 
 
 def day_types(bars, adr, p: Params):
-    """Per cdo qiri: tipi i dites sipas levizjes se 8 oreve te para (vetem e kaluara)."""
+    """Per cdo qiri (vetem nga e kaluara): "UP"/"DOWN" = dite trendi, "ROT" = rotacion, "" = e paqarte."""
     out, start = [], {}
     for j, b in enumerate(bars):
         d = (b.t + SERVER_OFFSET_MS) // 86_400_000
         k0 = start.setdefault(d, j)
         kind = ""
-        if j - k0 >= p.day_early_bars and adr[j] == adr[j]:
-            move = (bars[k0 + p.day_early_bars - 1].c - bars[k0].o) / adr[j]
+        if adr[j] == adr[j]:
+            # 8 oret e para: levizje e madhe = trend, levizje e vogel = rotacion
+            if j - k0 >= p.day_early_bars:
+                early = (bars[k0 + p.day_early_bars - 1].c - bars[k0].o) / adr[j]
+                if p.early_trend_adr and abs(early) >= p.early_trend_adr:
+                    kind = "UP" if early > 0 else "DOWN"
+                elif p.rot_day_adr and abs(early) < p.rot_day_adr:
+                    kind = "ROT"
+            # trend: tani cmimi eshte larg hapjes (mund te ndodhe ne cdo ore)
+            move = (b.c - bars[k0].o) / adr[j]
             if p.trend_day_adr and abs(move) >= p.trend_day_adr:
                 kind = "UP" if move > 0 else "DOWN"
-            elif p.rot_day_adr and abs(move) < p.rot_day_adr:
-                kind = "ROT"
         out.append(kind)
     return out
 

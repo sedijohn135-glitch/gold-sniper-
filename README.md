@@ -30,11 +30,14 @@ Rregullat:
 SELL), ose rotacion (BUY-SELL-BUY-SELL). Në 81 ditë: 36% trend, 64% rotacion. Boti e përcakton tipin
 pas 8 orëve të para të ditës (00:00–08:00 ora e grafikut):
 
-| Lëvizja e 8 orëve të para | Tipi | Çfarë bën boti |
+| Kushti | Tipi | Çfarë bën boti |
 |---|---|---|
-| ≥ 0.4 × ADR lart/poshtë | **DITË TRENDI** (61% mbarojnë trend në atë drejtim) | vetëm trade në drejtimin e ditës, dalje me trailing |
-| < 0.2 × ADR | **DITË ROTACIONI** (81% nuk bëjnë trend) | BUY dhe SELL, TP i vogël 0.3 × ADR (~30$) |
-| mes 0.2 dhe 0.4 | e paqartë | të dyja drejtimet, dalje me trailing |
+| 8 orët e para lëvizin ≥ 0.4 × ADR, **ose** në çdo moment çmimi është ≥ 0.5 × ADR larg hapjes së ditës | **DITË TRENDI** | vetëm trade në drejtimin e ditës, dalje me trailing |
+| 8 orët e para lëvizin < 0.2 × ADR (dhe dita s'është bërë trend) | **DITË ROTACIONI** (81% nuk bëjnë trend) | BUY dhe SELL, TP i vogël 0.3 × ADR (~30$) |
+| asnjëra | e paqartë | të dyja drejtimet, dalje me trailing |
+
+Rregulli "në çdo moment" e kap ditën e trendit edhe kur ai fillon vonë ose kur fundi/maja
+ishte para orarit të tregtimit (si 10 dhe 11 qershor).
 
 **Ditët me trend** (vetëm SELL ose vetëm BUY, si 1 dhe 2 shtator): pasi çmimi ka rënë ≥ 0.45 × ADR
 nga maja dhe s'bën kthim të madh, boti **shet rikthimin e vogël** (pullback 10–35% e ADR) kur ai
@@ -54,13 +57,16 @@ me trendin, jo vetëm kundër tij.
 | | **Sniper (fillestar)**: tipi i ditës + trailing | Vetëm trailing | TP fiks 1:3 (`TRAIL_ADR=0`) |
 |---|---|---|---|
 | Trade në ditë (mesatarisht) | 2.8 | 2.6 | 3.4 |
-| Ditë me ≥ 2 trade | 80% | 75% | 91% |
-| Totali | **+73.6R** | +61.2R | +52.9R |
-| 60 ditët e para / 60 të fundit | **+43.5R / +21.8R** | +38.6R / +12.9R | +24.8R / +34.1R |
-| Drawdown max | **14.8R** | 14.8R | 17.8R |
+| Ditë me ≥ 2 trade | 82% | 75% | 91% |
+| Totali | **+78.7R** | +61.2R | +52.9R |
+| 60 ditët e para / 60 të fundit | **+46.4R / +20.1R** | +38.6R / +12.9R | +24.8R / +34.1R |
+| Drawdown max | **13.9R** | 14.8R | 17.8R |
 | Trade-i më i mirë | **+18.6R** | +18.6R | +3R |
 
-Me 0.5% rrezik për trade, fillestari del rreth +37% në 120 ditë, me drawdown max rreth 7.5%.
+Në ditët nga screenshot-et (10, 11, 12, 15 qershor; 17, 18 gusht; 1, 2, 25 shtator): **+34.1R**
+(10 qershor +13.3R, 2 shtator +16.5R, 18 gusht +7.3R).
+
+Me 0.5% rrezik për trade, fillestari del rreth +39% në 120 ditë, me drawdown max rreth 7%.
 Rezultati ndryshon ±10R sipas dritares së saktë të 120 ditëve. Rezultatet e kaluara nuk garantojnë të ardhmen.
 
 Me trailing boti bën më pak trade, sepse mban një pozicion gjatë një lëvizjeje të madhe.
@@ -125,7 +131,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |
 | `MAX_LOTS` | `1.0` | loti maksimal për trade (mbrojtje) |
-| `TREND_DAY_ADR` | `0.4` | 8 orët e para ≥ kaq × ADR → ditë trendi (`0` = joaktiv) |
+| `EARLY_TREND_ADR` | `0.4` | 8 orët e para ≥ kaq × ADR → ditë trendi (`0` = joaktiv) |
+| `TREND_DAY_ADR` | `0.5` | çmimi ≥ kaq × ADR larg hapjes së ditës → ditë trendi në atë moment (`0` = joaktiv) |
 | `ROT_DAY_ADR` | `0.2` | 8 orët e para < kaq × ADR → ditë rotacioni (`0` = joaktiv) |
 | `ROT_TP_ADR` | `0.3` | TP në ditët e rotacionit (× ADR) |
 | `TRAIL_ADR` | `0.4` | distanca e trailing stop (× ADR); `0` = TP fiks me `RR` |

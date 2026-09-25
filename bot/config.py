@@ -94,7 +94,8 @@ class Config:
             trend_entries=_b("TREND_ENTRIES", True),
             pull_min_adr=_f("PULL_MIN_ADR", 0.10),
             pull_max_adr=_f("PULL_MAX_ADR", 0.35),
-            trend_day_adr=_f("TREND_DAY_ADR", 0.4),
+            early_trend_adr=_f("EARLY_TREND_ADR", 0.4),
+            trend_day_adr=_f("TREND_DAY_ADR", 0.5),
             rot_day_adr=_f("ROT_DAY_ADR", 0.2),
         )
         cfg = cls(
