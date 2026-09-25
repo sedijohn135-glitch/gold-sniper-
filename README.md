@@ -161,9 +161,9 @@ Logjika jote hap pas hapi. Tregu lëviz nga blerësit dhe shitësit: nëse çmim
 | **Hierarkia** (H1 + thyerje + AO) | 233 | **+95.6R** | 14.8R | +37.0R | +58.6R |
 | Hierarkia me slippage 0.3$ | 233 | +80.5R | 15.2R | +31.4R | +49.1R |
 | Muri H4 në vend të H1 | 87 | −9.5R | | | |
-| **Sniper + konfluencë + hierarki** | **768** | **+269.2R** | **16.9R** | +148.7R | +120.6R |
+| **Sniper + konfluencë + hierarki** | **768** | **+269.2R** | **18.8R** | +148.7R | +120.6R |
 
-Të tre modulet bashkë: të 8 muajt fitimprurës (më i keqi +14.3R), drawdown më i vogël se sniper-i vetëm.
+Të tre modulet bashkë: të 8 muajt fitimprurës (më i keqi +14.3R), drawdown më i vogël se sniper-i vetëm (18.8R, trade-t e renditura sipas daljes).
 
 Nga konfirmimet që provova veç e veç, **divergjenca AO** dhe **zona M5 e thyer** kanë avantazh.
 QM dhe trendline-i si konfirmim i vetëm dolën negativë në këtë kod. Edhe kjo metodë fiton nga pak

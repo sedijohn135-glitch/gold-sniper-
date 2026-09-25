@@ -12,6 +12,9 @@
 | 5 | **Pse H1/H4:** nëse çmimi s'e thyen dot murin H1/H4, tregu s'ka forcë. Pastaj konfirmimet: zonë M5 e thyer, QM, trendline, divergjencë AO | `bot/hierarchy.py` (muri H1 + thyerje strukture M5 + AO) | 233 trade, +95.6R, DD 14.8R | **live** (`GoldSniper-H`) |
 | 6 | **H4 support i fortë + divergjencë AO H1 + thyerja e supply-t M15 më të afërt**. Retest me wick në M15 → hyrje, SL nën qirin e rejection-it, TP1/TP2 supply D1, TP3 supply-i dominant lart | `research/swing.py` | 41 trade, 5 fitime, +34.7R (pa 4 gushtin −21R) | kërkim; kap 4 gushtin saktë |
 
+| 7 | **SBR/RBS me HTF:** support M15 i thyer, çmimi në supply H1, demand-i i fundit M5 thyhet. Retest + rejection M5 → sell, SL pak mbi SBR, TP demand M15 (origjina e rritjes) | `research/adaptive.py` | si rregull: −26R deri +8R; H1 fresh + thyerje M5 me TP origjinë: +122R deri +151R, DD 34–36R | kërkim; kap 24 shtatorin (+7.5R) |
+| 8 | **Boti adaptiv:** konteksti mund të jetë në H1 ose H4: zonë S/D, support, divergjencë AO ose QM | `research/adaptive.py` | 1008 kombinime: mban vetëm zona H1 fresh + thyerja M5; H4 dhe divergjencat HTF s'mbajnë | pjesa që mban është tashmë live (moduli 5) |
+
 ## Shembulli 6 në detaje (4 gusht 2026)
 
 - **H4:** demand 4020–4035, i mbajtur që nga 24 korriku (asnjë mbyllje H4 poshtë).
@@ -25,9 +28,20 @@
 aty humbin. Ajo që e bën 4 gushtin të veçantë (p.sh. kaq javë range mbi support-in H4)
 ende s'është kthyer në rregull. Shkurt–maji humb në çdo variant.
 
+## Shembulli 7 në detaje (24 shtator 2026)
+
+- **H1:** supply 4276–4288. Maja 4285.02 në 13:00 UTC (prekja e parë e zonës).
+- **M15:** support-i 4274–4283 ishte thyer në mëngjes (SBR), pra tani është rezistencë.
+- **M5:** demand-i i fundit (~4267–4271) thyhet në 13:50. Retest-i ndodh 14:05, me wick 44%.
+- **Hyrja:** SELL 4270.33 (14:10 UTC), SL 4273.67. TP 4245.28 = origjina e rritjes (low 4244.28),
+  arrihet 15:10 UTC → **+7.5R**.
+
 ## Çfarë mësova nga të gjitha
 
 - **Muri i kohës së lartë + divergjenca AO** është konfirmimi që funksionon më mirë (modulet 4 dhe 5).
 - **Zona e thyer (flip)** ka avantazh, sidomos kur zona thyhet disa herë.
 - QM dhe trendline-i si konfirmim i vetëm s'dolën fitimprurës në kod.
 - Fitimi vjen gjithmonë nga pak trade të mëdha: SL i vogël pas wick-ut, TP te nivelet e kohës së lartë.
+- **H1 është koha e lartë që funksionon.** Në këto 8 muaj, zonat H4 dhe divergjencat H1/H4 si kontekst
+  s'dhanë avantazh të qëndrueshëm.
+- Retest-i i zonës së thyer (SBR/RBS) vetëm si trigger s'mjafton. Thyerja e strukturës M5 (me AO) është më e fortë.
