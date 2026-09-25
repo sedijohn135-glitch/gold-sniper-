@@ -60,9 +60,11 @@ class Config:
 
     @classmethod
     def from_env(cls):
-        # MODE=sniper (fillestar): me pak trade, me te mira.
-        # MODE=aktiv: RSI 60/40 -> ~3 trade/dite, por fitim me i vogel ne backtest.
-        aktiv = str(_env("MODE", "sniper")).strip().lower() == "aktiv"
+        # MODE=sniper (fillestar): majat/fundet e lekundjeve te dites (ADR)
+        # MODE=klasik: modeli i vjeter me lookback + RSI
+        mode = str(_env("MODE", "sniper")).strip().lower()
+        if mode not in ("sniper", "klasik"):
+            raise SystemExit(f"MODE i panjohur: {mode} (perdor 'sniper' ose 'klasik')")
         p = Params(
             lookback=_i("LOOKBACK", 32),
             min_leg_atr=_f("MIN_LEG_ATR", 3.0),
@@ -70,12 +72,17 @@ class Config:
             min_close_pct=_f("MIN_CLOSE_PCT", 50),
             use_rsi=_b("USE_RSI", True),
             rsi_period=_i("RSI_PERIOD", 14),
-            rsi_ob=_f("RSI_OVERBOUGHT", 60 if aktiv else 65),
-            rsi_os=_f("RSI_OVERSOLD", 40 if aktiv else 35),
+            rsi_ob=_f("RSI_OVERBOUGHT", 65),
+            rsi_os=_f("RSI_OVERSOLD", 35),
             atr_period=_i("ATR_PERIOD", 14),
             sl_buffer_atr=_f("SL_BUFFER_ATR", 0.3),
             strong_close_pct=_f("STRONG_CLOSE_PCT", 75),
             equal_tol_atr=_f("EQUAL_TOL_ATR", 0),
+            mode=mode,
+            adr_days=_i("ADR_DAYS", 10),
+            swing_rev=_f("SWING_REV", 0.4),
+            leg_min_adr=_f("LEG_MIN_ADR", 0.45),
+            confirm_bars=_i("CONFIRM_BARS", 2),
         )
         cfg = cls(
             url=_env(["CTRADER_MCP_URL", "URL"], cls.url),

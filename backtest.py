@@ -10,13 +10,12 @@ from datetime import datetime, timezone
 from bot.config import Config
 from bot.mcp_client import McpClient
 from bot.data import fetch_bars
-from bot.strategy import atr_series, rsi_series, detect
+from bot.strategy import detect, prepare
 
 
 def run(bars, cfg: Config, verbose=True):
     p = cfg.strategy
-    atr = atr_series(bars, p.atr_period)
-    rsi = rsi_series(bars, p.rsi_period)
+    ind = prepare(bars, p)
     trades = []
     pos = None
     last_entry_i = -10_000
@@ -53,7 +52,7 @@ def run(bars, cfg: Config, verbose=True):
             nt = datetime.fromtimestamp(bars[i + 1].t / 1000, timezone.utc)
             if not cfg.in_session(nt.hour) or per_day.get(nt.date(), 0) >= cfg.max_trades_per_day:
                 continue
-            sig = detect(bars, i, p, atr, rsi)
+            sig = detect(bars, i, p, ind)
             if not sig:
                 continue
             nb = bars[i + 1]

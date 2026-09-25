@@ -9,14 +9,22 @@ dhe hap trade automatikisht në llogarinë tënde cTrader.
 - Punon 24/7 në **Railway**. Nuk të duhet kompjuter dhe as ta hedhësh botin në cTrader.
   cTrader në telefon e përdor vetëm për të parë trade-t.
 
-## Si funksionon strategjia
+## Si funksionon strategjia (MODE=sniper)
+
+Çdo ditë ari bën 2–3 maja/funde në M15. Boti i mat me aritmetikën e ditës:
+
+- **ADR** = mesatarja e lëvizjes ditore (high − low) të 10 ditëve të fundit. Tani ≈ 90–110$.
+- Në 27 majat/fundet që shënove (10–25 shtator), lëvizja nga një majë te fundi tjetër
+  ishte pothuajse gjithmonë **≥ 0.45 × ADR (~45$)**, mesatarisht ~0.6 × ADR.
+  18 nga 27 ishin high-i ose low-i i ditës.
+
+Rregullat:
 
 | | SELL (majë) | BUY (fund) |
 |---|---|---|
-| 1 | Qiriu bën high më të lartë se 32 qirinjtë e mëparshëm (8 orë) | Qiriu bën low më të ulët se 32 qirinjtë e mëparshëm |
-| 2 | Para kësaj ka pasur ngritje të madhe (≥ 3 × ATR) | Para kësaj ka pasur rënie të madhe (≥ 3 × ATR) |
-| 3 | RSI ≥ 65 (mbiblerje) | RSI ≤ 35 (mbishitje) |
-| 4 | Refuzim: bisht i gjatë lart (≥40%) dhe mbyllje poshtë, **ose** qiri i fortë bearish që mbyllet në 25% e poshtme, **ose** qiriu tjetër mbyllet nën trupin e majës | Refuzim: bisht i gjatë poshtë dhe mbyllje lart, **ose** qiri i fortë bullish që mbyllet në 25% e sipërme, **ose** qiriu tjetër mbyllet mbi trupin e fundit |
+| 1 | Boti ndjek lëkundjet e ditës: një fund konfirmohet kur çmimi ngrihet 0.4 × ADR prej tij | Një majë konfirmohet kur çmimi bie 0.4 × ADR prej saj |
+| 2 | Çmimi është ngritur **≥ 0.45 × ADR** nga fundi i fundit dhe bën high të ri të kësaj lëvizjeje | Çmimi ka rënë **≥ 0.45 × ADR** nga maja e fundit dhe bën low të ri |
+| 3 | Refuzim: bisht i gjatë lart (≥40%), **ose** qiri i fortë bearish që mbyllet në 25% e poshtme, **ose** një nga 2 qirinjtë pas majës mbyllet nën trupin e saj | Refuzim: bisht i gjatë poshtë, **ose** qiri i fortë bullish, **ose** një nga 2 qirinjtë pas fundit mbyllet mbi trupin e tij |
 
 - **SL**: pak mbi majë / nën fund (+0.3 × ATR). Min 3$, max 25$ (nëse del më i madh, trade-i anulohet).
 - **TP**: 3 × SL (Risk:Reward 1:3).
@@ -26,33 +34,22 @@ dhe hap trade automatikisht në llogarinë tënde cTrader.
 
 ### Rezultati në 120 ditët e fundit (të dhëna reale M15 nga llogaria jote)
 
-```
-Trade: 211 | Fitime: 43 (+3R) | Break-even: 66 | Humbje: 102 (-1R) | Totali: +28.4R
-Drawdown max: ~12R | Mesatarisht 2.4 trade në ditë
-```
-
-Me 0.5% rrezik për trade, kjo është rreth +14% dhe drawdown max rreth 6%.
-
-### Sa trade në ditë? Modi `sniper` ose `aktiv`
-
-| | `MODE=sniper` (fillestar) | `MODE=aktiv` |
+| | **`MODE=sniper`** (fillestar) | `MODE=klasik` (modeli i vjetër) |
 |---|---|---|
-| Filtri RSI | 65 / 35 | 60 / 40 |
-| Trade në ditë (mesatarisht) | 2.4 | 3.0 |
-| Ditë me ≥ 2 trade | 70% | 86% |
-| Ditë pa asnjë trade (nga 87) | 8 | 2 |
-| Totali në 120 ditë | **+28.4R** | +14.8R |
-| 60 ditët e para / 60 të fundit | +11.7R / +15.7R | **−4.1R** / +18.9R |
+| Trade në ditë (mesatarisht) | **2.9** | 2.4 |
+| Ditë me ≥ 2 trade | **84%** | 70% |
+| Ditë pa asnjë trade (nga 87) | 5 | 8 |
+| Fitime (+3R) / Break-even / Humbje (−1R) | 51 / 84 / 119 | 43 / 66 / 102 |
+| Totali | **+35.6R** | +28.4R |
+| 60 ditët e para / 60 të fundit | +18.8R / +22.9R | +11.7R / +15.7R |
+| Drawdown max | 13.8R | 11.9R |
 
-Më shumë trade = fitim më i vogël: sinjalet shtesë janë më të dobëta.
-Provova edhe pa RSI dhe me konfirmim deri në 3 qirinj: 3.5 trade/ditë, por vetëm +3R deri +4R
-në 120 ditë dhe humbje në 60 ditët e para. Prandaj fillestari mbetet `sniper`.
+Me 0.5% rrezik për trade, `sniper` del rreth +17.8% në 120 ditë, me drawdown max rreth 7%.
 
-Nga 27 majat/fundet e shënuara në screenshot (10–25 shtator), boti i zbulon 16.
-Ato që nuk i kap janë kryesisht: fund/majë më e lartë ose më e ulët se e mëparshmja (jo fshirje likuiditeti),
-RSI jo aq ekstrem (p.sh. 39 në vend të ≤ 35), ose kthim që vjen 2–3 qirinj më vonë.
-Disa të tjera i zbulon, por nuk hap trade sepse ka tashmë pozicion të hapur në të njëjtin drejtim,
-është jashtë orarit (00:00 UTC) ose SL-ja del mbi 25$.
+Nga 27 majat/fundet që shënove, **19 janë saktësisht majat/fundet që gjen boti** në lëkundjet e ditës,
+dhe në 14 prej tyre boti hyn direkt në trade. Të tjerat i humb kur lëvizja para tyre ishte pak nën 0.45 × ADR
+ose kur kthimi s'ka bisht dhe konfirmohet më vonë se 2 qirinj. Uljet e këtyre pragjeve
+në backtest i shtojnë humbjet më shumë se fitimet.
 Shumica e trade-ve humbin ose dalin në break-even; fitimi vjen nga pak trade të mëdha.
 **Rezultatet e kaluara nuk garantojnë rezultatet e ardhshme.** Provoje fillimisht në llogari demo.
 
@@ -95,7 +92,11 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 
 | Variabla | Vlera fillestare | Çfarë bën |
 |---|---|---|
-| `MODE` | `sniper` | `aktiv` = më shumë trade (RSI 60/40), fitim më i vogël në backtest |
+| `MODE` | `sniper` | `klasik` = modeli i vjetër (32 qirinj + RSI 65/35) |
+| `SWING_REV` | `0.4` | sa × ADR duhet të kthehet çmimi që të konfirmohet një majë/fund |
+| `LEG_MIN_ADR` | `0.45` | lëvizja minimale para majës/fundit (× ADR) |
+| `CONFIRM_BARS` | `2` | sa qirinj pas majës/fundit pritet konfirmimi |
+| `ADR_DAYS` | `10` | sa ditë për mesataren e lëvizjes ditore |
 | `DRY_RUN` | `false` | `true` = vetëm sinjale në log, pa trade |
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |
@@ -107,11 +108,11 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `MIN_SL` / `MAX_SL` | `3` / `25` | kufijtë e SL në $ |
 | `START_HOUR_UTC` / `END_HOUR_UTC` | `1` / `20` | orari i tregtimit (UTC) |
 | `MAX_SPREAD` | `0.5` | spread maksimal në $ |
-| `LOOKBACK` | `32` | sa qirinj për majë/fund |
-| `MIN_LEG_ATR` | `3.0` | lëvizja minimale para majës/fundit (× ATR) |
+| `LOOKBACK` | `32` | vetëm `klasik`: sa qirinj për majë/fund |
+| `MIN_LEG_ATR` | `3.0` | vetëm `klasik`: lëvizja minimale (× ATR) |
 | `MIN_WICK_PCT` | `40` | bishti minimal i qirit të refuzimit (%) |
-| `RSI_OVERBOUGHT` / `RSI_OVERSOLD` | `65` / `35` | filtri RSI |
-| `USE_RSI` | `true` | çaktivizo filtrin RSI me `false` |
+| `RSI_OVERBOUGHT` / `RSI_OVERSOLD` | `65` / `35` | vetëm `klasik`: filtri RSI |
+| `USE_RSI` | `true` | vetëm `klasik`: çaktivizo RSI me `false` |
 | `STRONG_CLOSE_PCT` | `75` | qiri i fortë kthimi pa bisht (`0` = joaktiv) |
 | `EQUAL_TOL_ATR` | `0` | lejon majë/fund të dyfishtë (p.sh. `0.2`); në backtest ul fitimin |
 
@@ -127,5 +128,5 @@ bot/mcp_client.py  lidhja me cTrader Trading MCP
 bot/data.py        marrja e qirinjve M15
 bot/config.py      parametrat nga variablat e mjedisit
 backtest.py        backtest me të dhënat reale
-cbot/GoldSniper.cs e njëjta strategji si cBot për cTrader Desktop (opsionale, nëse ke kompjuter)
+cbot/GoldSniper.cs modeli klasik si cBot për cTrader Desktop (opsionale, nëse ke kompjuter)
 ```

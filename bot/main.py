@@ -103,10 +103,14 @@ class GoldSniper:
         log.info("XAUUSD symbolId=%s | Valuta e llogarise: %s | Balanca: %.2f | DRY_RUN=%s",
                  self.cfg.symbol_id, self.deposit_asset, self.balance()[0], self.cfg.dry_run)
         c = self.cfg
-        log.info("Modi: %s", "AKTIV" if c.strategy.rsi_ob < 65 else "SNIPER")
-        log.info("Parametrat: rrezik %.2f%% | RR 1:%.1f | BE %.1fR | lookback %d | RSI %g/%g | ora %d-%d UTC",
-                 c.risk_percent, c.rr, c.break_even_r, c.strategy.lookback,
-                 c.strategy.rsi_ob, c.strategy.rsi_os, c.start_hour_utc, c.end_hour_utc)
+        s = c.strategy
+        if s.mode == "sniper":
+            log.info("Modi SNIPER: lekundje %.2f x ADR | leg min %.2f x ADR | konfirmim %d qirinj",
+                     s.swing_rev, s.leg_min_adr, s.confirm_bars)
+        else:
+            log.info("Modi KLASIK: lookback %d | RSI %g/%g", s.lookback, s.rsi_ob, s.rsi_os)
+        log.info("Rreziku %.2f%% | RR 1:%.1f | BE %.1fR | ora %d-%d UTC",
+                 c.risk_percent, c.rr, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
 
     def update_conversion(self):
         """Sa vlen 1 USD ne valuten e llogarise (per llogaritjen e lotit)."""
@@ -175,7 +179,8 @@ class GoldSniper:
         # prit 5 sekonda pas mbylljes se qirit M15
         if self.last_bar_t is not None and now < self.last_bar_t + 2 * M15_MS + 5000:
             return
-        bars = closed_bars(fetch_bars(self.client, self.cfg.symbol_id, now - 4 * 86_400_000, now), now)
+        # 16 dite qirinj: 10 dite per ADR + lekundjet e diteve te fundit
+        bars = closed_bars(fetch_bars(self.client, self.cfg.symbol_id, now - 16 * 86_400_000, now), now)
         if not bars:
             return
         newest = bars[-1]
