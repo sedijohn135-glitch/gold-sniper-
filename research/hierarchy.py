@@ -13,8 +13,10 @@ from bot.hierarchy import FEATS, P, prepare, candidates, pick  # noqa: F401
 SPREAD = 0.2
 
 
-def outcome(m5, c, tp, close_friday_utc=19, min_sl=1.0, slip=0.0):
-    """Dalja e nje kandidati: (R, indeksi i daljes). `slip` = rreshqitja e hyrjes ne $."""
+def outcome(m5, c, tp, close_friday_utc=19, min_sl=1.0, slip=0.0, spread=None, closed=None):
+    """Dalja e nje kandidati: (R, indeksi i daljes). `slip` = rreshqitja e hyrjes ne $.
+    `closed(t_ms)`: kur tregu i simbolit mbyllet (pozicioni del ne hapje); None = e premte 19:00 UTC."""
+    SPREAD = globals()["SPREAD"] if spread is None else spread
     buy = c["side"] == "BUY"
     entry = c["entry_c"] + (SPREAD if buy else 0) + (slip if buy else -slip)
     risk = max(abs(entry - c["sl"]), min_sl)
@@ -24,7 +26,10 @@ def outcome(m5, c, tp, close_friday_utc=19, min_sl=1.0, slip=0.0):
         lo, hi = (b.l, b.h) if buy else (b.l + SPREAD, b.h + SPREAD)
         x = sl if ((buy and lo <= sl) or (not buy and hi >= sl)) else \
             tp if ((buy and hi >= tp) or (not buy and lo <= tp)) else None
-        if x is None and close_friday_utc >= 0:
+        if x is None and closed is not None:
+            if closed(b.t):
+                x = b.o + (0 if buy else SPREAD)
+        elif x is None and close_friday_utc >= 0:
             d = datetime.fromtimestamp(b.t / 1000, timezone.utc)
             if (d.weekday() == 4 and d.hour >= close_friday_utc) or d.weekday() >= 5:
                 x = b.o

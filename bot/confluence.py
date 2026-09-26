@@ -8,7 +8,7 @@ Ne 8 muaj (M5 nga llogaria): me >= 4 nivele te bashkuara 64 trade, +23.3R, fitim
 te dy periudhat; me 2 nivele humb, me 3 fiton me pak. Si modul i dyte krahas modit sniper:
 +173.7R ne vend te +150.3R, drawdown 20.0R ne vend te 21.4R, muaji me i keq +11.4R ne vend te +4.0R.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from .strategy import Bar, adr_series
@@ -29,10 +29,19 @@ class ConfParams:
     fresh: bool = True
     zone_age_days: float = 10
     rej_wick: float = 0.5        # rejection: wick >= kaq pjese e qirit M5, mbyllje ne gjysmen tjeter
+    touch_tol: float = 0.5       # $: sa afer zones duhet te preke wick-u
     sl_buf: float = 0.5
     min_sl: float = 1.0
     max_sl: float = 20.0
     min_rr: float = 3.0          # TP duhet te jete >= kaq R larg
+
+
+USD_FIELDS = ("touch_tol", "sl_buf", "min_sl", "max_sl")
+
+
+def scaled(p: ConfParams, k: float) -> ConfParams:
+    """E njejta strategji per nje simbol tjeter: vlerat ne $ shumezohen me k."""
+    return replace(p, **{f: getattr(p, f) * k for f in USD_FIELDS})
 
 
 def prepare(m5, p: ConfParams):
@@ -103,7 +112,7 @@ def evaluate(b, adr, active, lines, p: ConfParams):
             ext = b.l
         if not rej:
             continue
-        tfs_hit = {z.tf for z in active if z.kind == kind and z.lo - 0.5 <= ext <= z.hi + 0.5 and fresh(z)}
+        tfs_hit = {z.tf for z in active if z.kind == kind and z.lo - p.touch_tol <= ext <= z.hi + p.touch_tol and fresh(z)}
         hit_tl = any(k == kind and abs(ext - v) <= tol for k, v in tl_now)
         if len(tfs_hit) + hit_tl < p.min_conf or (p.need_htf and not tfs_hit & set(HTF)):
             continue

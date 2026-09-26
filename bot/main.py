@@ -1,10 +1,12 @@
 """GOLD SNIPER - boti live per Railway.
 
 Lidhet me cTrader permes serverit cTrader Trading MCP (URL + Bearer),
-lexon qirinjte XAUUSD M15, gjen majat/fundet dhe hap trade.
+lexon qirinjte XAUUSD M15, gjen majat/fundet dhe hap trade. Te shtunen dhe
+te dielen (kur ari eshte i mbyllur) tregton BTCUSD me te njejtat module.
 Nuk ka nevoje per kompjuter apo per aplikacionin cTrader.
 """
 import base64
+import dataclasses
 import json
 import logging
 import os
@@ -19,6 +21,7 @@ from . import confluence as conf
 from . import hierarchy as hier
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
+from .markets import Market
 from .mcp_client import PRICE_SCALE, McpClient, McpError
 from .strategy import detect, prepare
 from .telegram import Telegram
@@ -110,8 +113,12 @@ class GoldSniper:
         self.open_summary = []   # pozicionet e hapura (per /status)
         # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
         self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H"}
-        self.conf_params = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
-        self.hier_params = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
+        self.conf_base = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
+        self.hier_base = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
+        self.conf_params, self.hier_params = self.conf_base, self.hier_base
+        self.base = dataclasses.replace(cfg)   # vlerat e arit; per BTC shkallezohen
+        self.markets = {}        # symbolId -> Market
+        self.mkt = None          # tregu aktual
         self.m5 = []             # qirinjte M5 per modulet e konfluences dhe te hierarkise
         self.last_m5_t = None
         self.error_since = None  # kur filloi problemi i fundit me cTrader
@@ -124,6 +131,20 @@ class GoldSniper:
         if not gold:
             raise SystemExit("XAUUSD nuk u gjet ne llogari.")
         self.cfg.symbol_id = int(gold["symbolId"])
+        c0 = self.base
+        gm = Market(c0.symbol_name, self.cfg.symbol_id, c0.lot_size, 1.0, c0.risk_percent, c0.max_lots, "gold",
+                    c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc)
+        self.markets = {gm.symbol_id: gm}
+        self.gold = gm
+        self.btc = None
+        if c0.btc_on:
+            b = next((x for x in syms if x.get("symbolName") == c0.btc_symbol), None)
+            if b:
+                self.btc = Market(c0.btc_symbol, int(b["symbolId"]), 1, c0.btc_scale, c0.btc_risk_percent,
+                                  c0.btc_max_lots, "btc", close_sunday_utc=c0.btc_close_sunday_utc)
+                self.markets[self.btc.symbol_id] = self.btc
+            else:
+                log.warning("%s nuk u gjet ne llogari: fundjava pa tregtim", c0.btc_symbol)
 
         bal = self.client.call("get_balance")
         self.money_digits = int(bal.get("moneyDigits", 2))
@@ -136,6 +157,10 @@ class GoldSniper:
 
         log.info("XAUUSD symbolId=%s | Valuta e llogarise: %s | Balanca: %.2f | DRY_RUN=%s",
                  self.cfg.symbol_id, self.deposit_asset, self.balance()[0], self.cfg.dry_run)
+        if self.btc:
+            log.info("Fundjava: %s (symbolId=%s) e shtune 00:00 - e diel %02d:00 UTC | rreziku %.2f%% | "
+                     "vlerat ne $ x%.0f | max %.2f lot", self.btc.name, self.btc.symbol_id, self.btc.close_sunday_utc,
+                     self.btc.risk_percent, self.btc.scale, self.btc.max_lots)
         c = self.cfg
         s = c.strategy
         if s.mode == "sniper":
@@ -145,7 +170,7 @@ class GoldSniper:
         else:
             log.info("Modi KLASIK: lookback %d | RSI %g/%g", s.lookback, s.rsi_ob, s.rsi_os)
         exit_txt = f"pa TP, trailing {c.trail_adr:.2f} x ADR pas {c.trail_start_r:.1f}R" if c.trailing else f"TP 1:{c.rr:.1f}"
-        log.info("Rreziku %.2f%% | Dalja: %s | BE %.1fR | ora %d-%d UTC",
+        log.info("XAUUSD: rreziku %.2f%% | Dalja: %s | BE %.1fR | ora %d-%d UTC",
                  c.risk_percent, exit_txt, c.break_even_r, c.start_hour_utc, c.end_hour_utc)
         if s.mode == "sniper":
             if c.conf_on:
@@ -158,13 +183,17 @@ class GoldSniper:
                      "ROTACION kur eficienca pas 6 oreve < %.2f (TP %.1f x ADR)",
                      s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
                      s.eff_rot, c.rot_tp_adr)
+        self.switch_market(self.market_at(datetime.now(timezone.utc)), announce=False)
         bal, eq = self.balance()
         self.last_balance, self.last_equity = bal, eq
         self.tg.send(
             f"🟢 Gold Sniper u nis\n"
             f"Llogaria: {self.env} | Balanca: {bal:,.2f} {self.deposit_asset}\n"
-            f"XAUUSD M15 | Rreziku {c.risk_percent}% per trade | Max {c.max_lots} lot\n"
-            f"Orari: {c.start_hour_utc:02d}:00-{c.end_hour_utc:02d}:00 UTC"
+            f"XAUUSD M15 | Rreziku {self.gold.risk_percent}% per trade | Max {self.gold.max_lots} lot\n"
+            f"Orari: e hene-e premte {self.gold.start_h:02d}:00-{self.gold.end_h:02d}:00 UTC"
+            + (f"\nFundjava: {self.btc.name} (e shtune 00:00 - e diel {self.btc.close_sunday_utc:02d}:00 UTC, "
+               f"rreziku {self.btc.risk_percent}%)" if self.btc else "")
+            + f"\nTani: {self.mkt.name}"
             + (" | DRY_RUN (pa trade)" if c.dry_run else "")
             + "\nShkruaj /status per gjendjen.")
         self.tg.on_command("/status", self.status_text)
@@ -196,6 +225,37 @@ class GoldSniper:
         px = self.client.call("get_spot_prices", {"symbolId": [self.cfg.symbol_id]})["prices"][0]
         return px["bid"] / PRICE_SCALE, px["ask"] / PRICE_SCALE
 
+    def market_at(self, dt):
+        """BTC ne dritaren e fundjaves (nese eshte aktiv), perndryshe ari."""
+        if self.btc and self.btc.in_window(dt):
+            return self.btc
+        return self.gold
+
+    def market_of(self, pos):
+        return self.markets.get(find_key(pos, "symbolId"), self.gold)
+
+    def switch_market(self, m, announce=True):
+        """Kalon botin te tregu m: simboli, loti, rreziku dhe vlerat ne $ (x scale)."""
+        c, b = self.cfg, self.base
+        c.symbol_name, c.symbol_id, c.lot_size = m.name, m.symbol_id, m.lot_size
+        c.risk_percent, c.max_lots = m.risk_percent, m.max_lots
+        c.min_sl, c.max_sl, c.max_spread = b.min_sl * m.scale, b.max_sl * m.scale, b.max_spread * m.scale
+        self.conf_params = conf.scaled(self.conf_base, m.scale)
+        self.hier_params = hier.scaled(self.hier_base, m.scale)
+        # qirinjte dhe gjendja e simbolit te meparshem s'vlejne me
+        self.last_bar_t, self.last_entry_bar_t = None, 0
+        self.m5, self.last_m5_t = [], None
+        self.adr, self.day_kind, self.last_signal = None, "", None
+        old, self.mkt = self.mkt, m
+        log.info("Tregu: %s | SL %.2f-%.2f$ | spread max %.2f$ | rreziku %.2f%%", m.name, c.min_sl, c.max_sl,
+                 c.max_spread, c.risk_percent)
+        if announce and old is not None:
+            if m.kind == "btc":
+                self.tg.send(f"🔄 Fundjava: ari eshte i mbyllur, boti kalon te {m.name} "
+                             f"(rreziku {m.risk_percent}%, deri te dielen {m.close_sunday_utc:02d}:00 UTC).")
+            else:
+                self.tg.send(f"🔄 Boti kthehet te {m.name} per javen (hyrjet nga {m.start_h:02d}:00 UTC).")
+
     def my_positions(self):
         data = self.client.call("get_positions")
         out = []
@@ -205,7 +265,7 @@ class GoldSniper:
             comment = find_key(p, "comment")
             sym = find_key(p, "symbolId")
             mine = self.labels.values()
-            if pid in self.my_position_ids or label in mine or (comment in mine and sym == self.cfg.symbol_id):
+            if pid in self.my_position_ids or label in mine or (comment in mine and sym in self.markets):
                 out.append(p)
         return out
 
@@ -267,13 +327,22 @@ class GoldSniper:
 
         positions = self.my_positions()
         self.check_closed(positions)
-        if positions and self.cfg.weekend_close(datetime.now(timezone.utc)):
-            log.info("E premte mbremje: mbyllen pozicionet para fundjaves")
-            for p in positions:
+        now_dt = datetime.now(timezone.utc)
+        closing = [p for p in positions if self.market_of(p).must_close(now_dt)]
+        if closing:
+            kinds = {self.market_of(p).kind for p in closing}
+            log.info("Mbyllja e tregut (%s): mbyllen %d pozicione", "/".join(sorted(kinds)), len(closing))
+            for p in closing:
                 self.close(find_key(p, "positionId"), p)
-            self.tg.send("🔔 E premte mbremje: pozicionet u mbyllen para fundjaves. Boti rifillon te henen.")
+            if "gold" in kinds:
+                self.tg.send("🔔 E premte mbremje: pozicionet e arit u mbyllen para fundjaves.")
+            if "btc" in kinds:
+                self.tg.send("🔔 E diel mbremje: pozicionet BTC u mbyllen. Te henen boti kthehet te ari.")
             positions = self.my_positions()
             self.check_closed(positions)
+        want = self.market_at(now_dt)
+        if want is not self.mkt:
+            self.switch_market(want)
         self.manage(positions)
         self.check_daily_loss(positions)
         if self.cfg.conf_on or self.cfg.hier_on:
@@ -338,10 +407,8 @@ class GoldSniper:
                 return log.info("  injoruar: ka pozicion te hapur")
         if (bars[i].t - self.last_entry_bar_t) / M15_MS < c.cooldown_bars:
             return log.info("  injoruar: pritje pas trade-it te fundit")
-        if not c.in_session(hour):
-            return log.info("  injoruar: jashte orarit (%d UTC)", hour)
-        if c.weekend_close(datetime.now(timezone.utc)):
-            return log.info("  injoruar: e premte mbremje / fundjave")
+        if not self.mkt.can_open(datetime.now(timezone.utc)):
+            return log.info("  injoruar: jashte orarit te %s (%d UTC)", self.mkt.name, hour)
 
         bid, ask = self.spot()
         if ask - bid > c.max_spread:
@@ -439,15 +506,15 @@ class GoldSniper:
         except McpError:
             pass
         self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry,
-                           "side": side, "entry": entry, "lots": lots, "bal_open": bal_open,
+                           "side": side, "entry": entry, "lots": lots, "bal_open": bal_open, "lot_size": c.lot_size,
                            "opened": int(time.time() * 1000), "locked_r": 0,
-                           "module": module, "fixed": module != "main"}
+                           "module": module, "fixed": module != "main", "symbol": c.symbol_name}
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
         risk_money = risk * lots * c.lot_size * self.usd_to_deposit
         self.tg.send(
-            f"🎯 {'🟢 BUY' if side == 'BUY' else '🔴 SELL'} XAUUSD {lots:.2f} lot @ {entry:.2f}\n"
+            f"🎯 {'🟢 BUY' if side == 'BUY' else '🔴 SELL'} {c.symbol_name} {lots:.2f} lot @ {entry:.2f}\n"
             f"{note}\n"
             f"SL {sl:.2f} ({risk:.2f}$, rrezik ~{risk_money:,.2f} {self.deposit_asset})\n"
             + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
@@ -519,6 +586,8 @@ class GoldSniper:
             if (plan is not None and not plan.get("ok")) or find_key(pos, "stopLoss") is None:
                 self.protect(pid, pos)
                 continue
+            if self.market_of(pos) is not self.mkt:
+                continue          # pozicion i tregut tjeter: mbrohet vetem me SL/TP (mbyllet ne kufi)
             module = self.module_of(pos)
             if module != "main":
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
@@ -530,7 +599,8 @@ class GoldSniper:
                                        "side": side_of(pos), "entry": entry,
                                        "lots": (find_key(pos, "volume") or 0) / (self.cfg.lot_size * 100),
                                        "bal_open": self.last_balance, "opened": int(time.time() * 1000),
-                                       "module": module, "fixed": True}
+                                       "module": module, "fixed": True, "symbol": self.mkt.name,
+                                       "lot_size": self.cfg.lot_size}
                 continue
             self.manage_stop(pid, pos, plan)
 
@@ -581,8 +651,8 @@ class GoldSniper:
             return log.info("  injoruar: u arrit humbja max ditore")
         if any(self.module_of(q) == module for q in positions):
             return log.info("  injoruar: moduli ka pozicion te hapur")
-        if conf.weekend_or_offhours(now, c.start_hour_utc, c.end_hour_utc, c.close_friday_utc):
-            return log.info("  injoruar: jashte orarit / fundjave")
+        if not self.mkt.can_open(datetime.fromtimestamp(now / 1000, timezone.utc)):
+            return log.info("  injoruar: jashte orarit te %s", self.mkt.name)
         bid, ask = self.spot()
         if ask - bid > c.max_spread:
             return log.info("  injoruar: spread %.2f", ask - bid)
@@ -616,7 +686,7 @@ class GoldSniper:
                                       "side": "BUY" if buy else "SELL", "entry": entry,
                                       "lots": (find_key(pos, "volume") or 0) / (c.lot_size * 100),
                                       "bal_open": self.last_balance, "opened": int(time.time() * 1000),
-                                      "locked_r": 0}
+                                      "locked_r": 0, "symbol": self.mkt.name, "lot_size": c.lot_size}
         bid, ask = self.spot()
         price = bid if buy else ask
         plan["best"] = max(plan["best"], price) if buy else min(plan["best"], price)
@@ -639,8 +709,8 @@ class GoldSniper:
             trail = plan["best"] - dist if buy else plan["best"] + dist
             new_sl = max(new_sl, trail) if buy else min(new_sl, trail)
         new_sl = round(new_sl, 2)
-        # levize vetem kur SL permiresohet te pakten 0.5$ (pa spam urdhrash)
-        if (new_sl - sl if buy else sl - new_sl) >= 0.5:
+        # levize vetem kur SL permiresohet te pakten 0.5$ (x scale per BTC; pa spam urdhrash)
+        if (new_sl - sl if buy else sl - new_sl) >= 0.5 * self.mkt.scale:
             self.client.call("amend_position", {"positionId": pid, "stopLoss": new_sl})
             plan["sl"] = new_sl
             log.info("SL i %s u zhvendos ne %.2f (fitimi max %.2f$ = %.1fR)", pid, new_sl, fav, fav / risk)
@@ -709,7 +779,10 @@ class GoldSniper:
         r = ((px - entry) if buy else (entry - px)) / risk if px and entry else 0.0
         bal, eq = self.balance()
         self.last_balance, self.last_equity = bal, eq
-        pnl = bal - plan["bal_open"] if plan.get("bal_open") else None
+        # fitimi nga cmimet e ketij pozicioni (ndryshimi i balances perzihet kur mbyllen disa pozicione njeheresh)
+        lot_size = plan.get("lot_size") or self.markets.get(plan.get("symbol_id"), self.gold).lot_size
+        pnl = ((px - entry) if buy else (entry - px)) * plan.get("lots", 0) * lot_size * self.usd_to_deposit \
+            if px and entry else None
         self.day_stats["closed"] += 1
         self.day_stats["r"] += r
         self.day_stats["wins"] += r > 0.05
@@ -718,9 +791,9 @@ class GoldSniper:
         icon = "✅" if r > 0.05 else ("➖" if r > -0.05 else "❌")
         hours = (time.time() * 1000 - plan.get("opened", time.time() * 1000)) / 3_600_000
         self.tg.send(
-            f"{icon} U mbyll {plan.get('side', '')} {plan.get('lots', 0):.2f} lot\n"
+            f"{icon} U mbyll {plan.get('side', '')} {plan.get('symbol', '')} {plan.get('lots', 0):.2f} lot\n"
             f"Hyrja {entry:.2f} -> dalja {px:.2f}{'' if exact else ' (afersisht)'} | {r:+.1f}R | {hours:.1f} ore\n"
-            + (f"Fitimi: {pnl:+,.2f} {self.deposit_asset}\n" if pnl is not None else "")
+            + (f"Fitimi: {pnl:+,.2f} {self.deposit_asset} (pa komision)\n" if pnl is not None else "")
             + f"Balanca: {bal:,.2f} {self.deposit_asset}")
         log.info("Pozicioni %s u mbyll @ %.2f | %+.1fR | %s", pid, px or 0, r,
                  f"{pnl:+.2f} {self.deposit_asset}" if pnl is not None else "")
@@ -754,9 +827,12 @@ class GoldSniper:
         if self.last_signal:
             lines.append(f"Sinjali i fundit: {self.last_signal['side']} @ {self.last_signal['extreme']:.2f} "
                          f"({self.last_signal['time']})")
-        hour = datetime.now(timezone.utc).hour
-        lines.append("Orari: " + ("brenda" if c.in_session(hour) else "jashte") +
-                     f" ({c.start_hour_utc:02d}-{c.end_hour_utc:02d} UTC)")
+        m = self.mkt
+        if m:
+            win = (f"e shtune 00:00 - e diel {m.close_sunday_utc:02d}:00 UTC" if m.kind == "btc"
+                   else f"e hene-e premte {m.start_h:02d}-{m.end_h:02d} UTC")
+            lines.append(f"Tregu: {m.name} | orari: {'brenda' if m.can_open(datetime.now(timezone.utc)) else 'jashte'}"
+                         f" ({win})")
         return "\n".join(lines)
 
     def status(self):

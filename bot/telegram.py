@@ -69,6 +69,7 @@ class Telegram:
 
     def _poll(self):
         offset = None
+        conflicts = 0
         while True:
             try:
                 args = {"timeout": 50, "allowed_updates": ["message"]}
@@ -88,6 +89,20 @@ class Telegram:
                             self.send(handler())
                         except Exception as e:
                             self.send(f"Gabim ne {cmd}: {e}")
+                conflicts = 0
+            except urllib.error.HTTPError as e:
+                if e.code != 409:
+                    log.warning("Telegram getUpdates: %s", e)
+                    time.sleep(10)
+                    continue
+                # 409: nje program tjeter lexon mesazhet e ketij boti (deployment i dyte, webhook,
+                # ose nje aplikacion tjeter me te njejtin token). Njoftimet dergohen gjithsesi.
+                conflicts += 1
+                if conflicts in (1, 20):
+                    body = e.read().decode(errors="replace")[:200]
+                    log.warning("Telegram 409: %s. Nje program tjeter po perdor kete token per komandat; "
+                                "njoftimet vazhdojne, /status mund te mos pergjigjet. Provohet me rralle.", body)
+                time.sleep(min(300, 15 * conflicts))
             except Exception as e:
                 log.warning("Telegram getUpdates: %s", e)
                 time.sleep(10)

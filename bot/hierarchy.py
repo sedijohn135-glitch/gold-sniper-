@@ -17,7 +17,7 @@ Live perdoren muri H1 + bos + ao (P.need). Ne 8 muaj (M5 nga llogaria, 26 jan - 
 dolen negative; muri H4 humbi (-9.5R). Fitimi vjen nga pak trade te medha (SL i vogel, TP larg).
 """
 import bisect
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .confluence import TF, trendlines
 from .strategy import adr_series
@@ -54,6 +54,7 @@ class P:
     swing_k: int = 2
     ao_look: int = 48            # qirinj M5 mbrapa per swing-un e divergjences
     qm_tol: float = 1.0          # $: sa afer left shoulder
+    touch_tol: float = 0.5       # $: sa afer zones M5-M30 duhet te preke rejection-i
     tl_tol_adr: float = 0.03
     rej_wick: float = 0.5
     sl_buf: float = 0.5
@@ -61,6 +62,14 @@ class P:
     max_sl: float = 20.0
     min_rr: float = 2.0          # TP (niveli fresh perballe) duhet te jete >= kaq R larg
     need: tuple = ("bos", "ao")  # konfirmimet e detyrueshme
+
+
+USD_FIELDS = ("zone_tol", "qm_tol", "touch_tol", "sl_buf", "min_sl", "max_sl")
+
+
+def scaled(p: P, k: float) -> P:
+    """E njejta strategji per nje simbol tjeter: vlerat ne $ shumezohen me k (p.sh. BTC ~15 x ari)."""
+    return replace(p, **{f: getattr(p, f) * k for f in USD_FIELDS})
 
 
 def _fresh(z, t):
@@ -178,7 +187,7 @@ def candidates(m5, p: P, ind, start=0):
                         f.add("ao")
                 ext = b.h if sell else b.l
                 for zz in active_z:
-                    if zz.kind != kind or not (zz.lo - 0.5 <= ext <= zz.hi + 0.5) or not _fresh(zz, b.t):
+                    if zz.kind != kind or not (zz.lo - p.touch_tol <= ext <= zz.hi + p.touch_tol) or not _fresh(zz, b.t):
                         continue
                     if zz.tf == "M5" and getattr(zz, "flip", False):
                         f.add("flip")

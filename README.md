@@ -195,6 +195,29 @@ Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, tr
 >
 > ⚠️ Tokeni `Bearer` jep akses tregtimi në llogarinë tënde. Mos e shkruaj kurrë në kod ose në GitHub, vetëm te Railway → Variables.
 
+### Fundjava: BTCUSD (e shtunë dhe e diel)
+
+Ari është i mbyllur në fundjavë, prandaj boti kalon vetë te **BTCUSD**:
+
+- **E shtunë 00:00 UTC → e diel 21:00 UTC** tregton BTCUSD me të njëjtat tre module.
+- **E diel 21:00 UTC** mbyll pozicionet BTC; **të hënën** kthehet te XAUUSD si gjithmonë.
+- Loti i kriptos është ndryshe: 1 lot = 1 BTC (`volume 100`), ndërsa 1 lot ari = 100 oz (`volume 10000`).
+  Boti e llogarit vetë sipas simbolit.
+- BTC lëviz ~20 herë më shumë se ari në ditë, prandaj të gjitha vlerat në $ shumëzohen me 20
+  (SL min 60$, max 500$, spread max 10$). Strategjitë bazohen në ADR, kështu që përshtaten vetë.
+- Në Telegram vjen 🔄 kur ndërron tregu, dhe mesazhet e trade-ve tregojnë BTCUSD.
+
+**Kujdes:** në backtest (8 muaj, vetëm të shtunat dhe të dielat) BTC s'ka avantazh të qartë:
+
+| Moduli | 8 muaj | Shk–maj | Qer–sht |
+|---|---|---|---|
+| Sniper | 169 trade, +17.1R | +21.0R | −3.8R |
+| Hierarkia | 49 trade, +6.5R | +10.5R | −4.0R |
+| Konfluenca | 37 trade, +3.6R | +10.8R | −7.2R |
+
+Katër muajt e fundit dolën negativë për të tre modulet, dhe vetëm rreth 1 në 3 fundjava fitoi.
+Prandaj rreziku për BTC fillon te **0.25%** (gjysma e arit). Për ta fikur: `BTC_WEEKEND=false`.
+
 ### Njoftimet në Telegram
 
 Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
@@ -212,6 +235,11 @@ Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
 Shkruaji botit **/status** në Telegram: të tregon balancën, pozicionin e hapur dhe tipin e ditës.
 Komandat vetëm lexojnë; nga Telegram-i nuk mund të hapet ose mbyllet asnjë trade,
 dhe boti u përgjigjet vetëm mesazheve nga chat-i yt.
+
+Nëse në log shfaqet `Telegram 409 Conflict`: një program tjetër po lexon mesazhet e të njëjtit bot
+(p.sh. një deployment i dytë në Railway, ose një aplikacion tjetër me të njëjtin token). Njoftimet vijnë
+gjithsesi; vetëm `/status` mund të mos përgjigjet. Zgjidhja: një token vetëm për këtë bot (krijo një bot
+të ri te @BotFather) dhe një service i vetëm në Railway.
 
 Vendosja:
 1. Në Telegram hap botin tënd dhe shtyp **Start** (një bot s'mund të të shkruajë para kësaj).
@@ -276,6 +304,11 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIERARCHY` | `true` | moduli i tretë i hierarkisë (`false` = joaktiv) |
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
+| `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
+| `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |
+| `BTC_MAX_LOTS` | si `MAX_LOTS` | loti maksimal për BTC (1 lot = 1 BTC) |
+| `BTC_SCALE` | `20` | vlerat në $ të arit × kaq për BTC |
+| `BTC_CLOSE_SUNDAY_UTC` | `21` | ora e së dielës (UTC) kur mbyllen pozicionet BTC |
 
 Llogaria jote demo ka balancë shumë të madhe, prandaj me 0.5% rrezik loti del gjithmonë
 te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dëshirës.
@@ -290,6 +323,7 @@ bot/data.py        marrja e qirinjve (M15, M5)
 bot/zones.py       zonat supply/demand fresh, zonat e thyera (flip), swing-et
 bot/confluence.py  moduli i konfluences (H1/H4 + zona fresh + trendline + rejection M5)
 bot/hierarchy.py   moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO + rejection M5)
+bot/markets.py     tregjet: XAUUSD e hene-e premte, BTCUSD te shtunen dhe te dielen
 bot/telegram.py    njoftimet dhe komanda /status
 bot/config.py      parametrat nga variablat e mjedisit
 backtest.py        backtest me të dhënat reale
