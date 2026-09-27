@@ -12,7 +12,10 @@
 3. HYRJA: qiri M5 rejection, hyrje ne mbyllje, SL pertej wick-ut (min 3$), TP te niveli fresh
    perballe (zone M15/M30/H1/H4 ose trendline) >= 2R.
 
-Live perdoren muri H1 + bos + ao (P.need). Ne 8 muaj (M5 nga llogaria, 26 jan - 25 sht 2026):
+Live perdoren muri H1 + bos + (ao ose flip): thyerja e struktures plus divergjence AO ose
+retest i zones se thyer SBR/RBS. Vetem bos + ao ishte 233 trade, +95.6R, DD 14.8R; me "ose flip"
+337 trade, +122.1R, DD 18.2R (shk-maj +58.8R, qer-sht +63.2R), me i mire edhe me dritare 6h/10h.
+Varianti i meparshem (vetem bos + ao) Ne 8 muaj (M5 nga llogaria, 26 jan - 25 sht 2026):
 214 trade, +100.2R, DD 14.8R (shk-maj +36.9R, qer-sht +63.3R). Si konfirmim i vetem, qm dhe tl
 dolen negative; muri H4 humbi (-9.5R). Fitimi vjen nga pak trade te medha (SL i vogel, TP larg).
 """
@@ -61,7 +64,8 @@ class P:
     min_sl: float = 3.0          # SL minimal ne $ (me i vogel zgjerohet)
     max_sl: float = 20.0
     min_rr: float = 2.0          # TP (niveli fresh perballe) duhet te jete >= kaq R larg
-    need: tuple = ("bos", "ao")  # konfirmimet e detyrueshme
+    need: tuple = ("bos",)       # konfirmimi absolut: thyerja e strukture M5
+    any_of: tuple = ("ao", "flip")  # plus te pakten njera: divergjence AO ose zone e thyer (SBR/RBS)
 
 
 USD_FIELDS = ("zone_tol", "qm_tol", "touch_tol", "sl_buf", "min_sl", "max_sl")
@@ -216,7 +220,7 @@ def candidates(m5, p: P, ind, start=0):
 
 def pick(c, p: P):
     """Filtri live/backtest per nje kandidat: (sl, tp, risk) ose None."""
-    if c["htf"] not in p.htf or not set(p.need) <= c["feats"]:
+    if c["htf"] not in p.htf or not set(p.need) <= c["feats"] or (p.any_of and not set(p.any_of) & c["feats"]):
         return None
     risk = max(c["risk"], p.min_sl)
     tp = next((x for x in c["tps"] if abs(x - c["entry_c"]) >= p.min_rr * risk), None)

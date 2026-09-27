@@ -66,7 +66,12 @@ if __name__ == "__main__":
     m5 = pickle.load(open(sys.argv[1], "rb"))
     p = P()
     C = candidates(m5, p, prepare(m5, p))
-    T = simulate(m5, C, frozenset(p.need), 0, p.min_rr, min_sl=p.min_sl)
+    T, free = [], -1
+    for c in C:     # i njejti filter si boti live (H.pick)
+        if c["i"] <= free or weekend_or_offhours(c["t"], 1, 20, 19) or not pick(c, p):
+            continue
+        r, j = outcome(m5, c, pick(c, p)[1], min_sl=p.min_sl)
+        T.append(dict(t=c["t"], r=r)); free = j
     print(len(C), "kandidate |", len(T), "trade", f"{sum(x['r'] for x in T):+.1f}R")
 
 # Rezultati (M5 nga llogaria, 26 jan - 25 sht 2026), muri H1, dritare 8 ore, TP >= 2R, SL >= 3$:

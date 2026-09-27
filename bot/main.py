@@ -29,7 +29,7 @@ from .telegram import Telegram
 log = logging.getLogger("gold-sniper")
 RECENT_LOGS = deque(maxlen=100)
 HIER_NAMES = {"bos": "thyerje strukture M5", "ao": "divergjence AO", "qm": "QM",
-              "flip": "zone M5 e thyer", "tl": "trendline M30", "ltf": "zone fresh M15/M30"}
+              "flip": "retest SBR/RBS (zone M5 e thyer)", "tl": "trendline M30", "ltf": "zone fresh M15/M30"}
 
 
 # ---------------------------------------------------------------- helpers
@@ -178,7 +178,7 @@ class GoldSniper:
                          c.conf_min_levels, c.conf_rr)
             if c.hier_on:
                 log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
-                         "divergjence AO + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
+                         "(divergjence AO ose retest SBR/RBS) + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
             log.info("Tipi i dites: TREND kur cmimi >= %.1f x ADR nga hapja (trailing %.1f x ADR%s) | "
                      "ROTACION kur eficienca pas 6 oreve < %.2f (TP %.1f x ADR)",
                      s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
@@ -637,12 +637,11 @@ class GoldSniper:
             p = self.hier_params
             sig = hier.signal(self.m5, p)
             if sig:
-                extra = [HIER_NAMES[f] for f in sig["feats"] if f not in p.need]
+                conf_txt = " + ".join(HIER_NAMES[f] for f in ["bos"] + [f for f in sig["feats"] if f != "bos"])
                 log.info("HIERARKIA %s | muri %s | %s | SL %.2f TP %.2f | qiri %s", sig["side"], sig["htf"],
                          "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
-                                 f"HIERARKIA: muri {sig['htf']} s'u thye + thyerje strukture M5 + divergjence AO"
-                                 + (f" + {', '.join(extra)}" if extra else "") + " + rejection M5")
+                                 f"HIERARKIA: muri {sig['htf']} s'u thye + {conf_txt} + rejection M5")
 
     def fixed_trade(self, module, sig, min_rr, min_sl, max_sl, now, positions, note):
         """Trade me SL/TP fikse per modulet M5 (nje pozicion per modul)."""

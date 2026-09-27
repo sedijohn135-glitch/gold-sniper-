@@ -150,20 +150,24 @@ Logjika jote hap pas hapi. Tregu lëviz nga blerësit dhe shitësit: nëse çmim
 
 1. **Muri H1**: prekja e parë e një zone H1 (fresh), pa asnjë mbyllje përtej saj.
 2. Brenda 8 orëve pas prekjes: **thyerje strukture M5** (mbyllje nën swing low-in e fundit para majës,
-   pra demand-i M5 i thyer) **dhe divergjencë AO në M5** (maja më e lartë, AO më i ulët).
+   pra demand-i M5 i thyer) **plus njëri nga:** divergjencë AO në M5 (maja më e lartë, AO më i ulët)
+   **ose** retest i zonës M5 të thyer (SBR/RBS).
 3. **Rejection M5** → hyrje në mbylljen e qirit. SL pas wick-ut (minimumi 3$), TP te niveli
    fresh përballë (zonë M15/M30/H1/H4 ose trendline), të paktën **2R** larg.
 4. Pozicion i vetin (label `GoldSniper-H`), SL/TP fikse, pa trailing.
-5. Në Telegram shfaqen konfirmimet: `HIERARKIA: muri H1 s'u thye + thyerje strukture M5 + divergjence AO + … + rejection M5`.
+5. Në Telegram shfaqen konfirmimet: `HIERARKIA: muri H1 s'u thye + thyerje strukture M5 + divergjence AO + … + rejection M5`
+   (ose `… + retest SBR/RBS (zone M5 e thyer) + …`).
 
 | 8 muaj (M5 nga llogaria) | Trade | Rezultati | Drawdown | Shk–maj | Qer–sht |
 |---|---|---|---|---|---|
-| **Hierarkia** (H1 + thyerje + AO) | 233 | **+95.6R** | 14.8R | +37.0R | +58.6R |
+| **Hierarkia** (H1 + thyerje + AO ose SBR/RBS) | 337 | **+122.1R** | 18.2R | +58.8R | +63.2R |
+| Vetëm thyerje + AO (versioni i parë) | 233 | +95.6R | 14.8R | +37.0R | +58.6R |
+| Thyerje + QM / thyerje + trendline M30 | 147 / 40 | −29.8R / −10.4R | | | |
 | Hierarkia me slippage 0.3$ | 233 | +80.5R | 15.2R | +31.4R | +49.1R |
 | Muri H4 në vend të H1 | 87 | −9.5R | | | |
-| **Sniper + konfluencë + hierarki** | **768** | **+269.2R** | **18.8R** | +148.7R | +120.6R |
+| **Sniper + konfluencë + hierarki** | **872** | **+295.7R** | **22.5R** | +170.5R | +125.3R |
 
-Të tre modulet bashkë: të 8 muajt fitimprurës (më i keqi +14.3R), drawdown më i vogël se sniper-i vetëm (18.8R, trade-t e renditura sipas daljes).
+Të tre modulet bashkë: të 8 muajt fitimprurës (më i keqi +13R), drawdown 22.5R (trade-t e renditura sipas daljes).
 
 Nga konfirmimet që provova veç e veç, **divergjenca AO** dhe **zona M5 e thyer** kanë avantazh.
 QM dhe trendline-i si konfirmim i vetëm dolën negativë në këtë kod. Edhe kjo metodë fiton nga pak
