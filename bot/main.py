@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import confluence as conf
 from . import hierarchy as hier
 from . import news
+from . import report
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .markets import Market
@@ -115,6 +116,8 @@ class GoldSniper:
         # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
         self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N"}
         self.calendar = news.Calendar()
+        self.journal = {}        # positionId -> {"module", "r"} per raportin javor
+        self.reports_sent = set()
         self.conf_base = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
         self.hier_base = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
         self.conf_params, self.hier_params = self.conf_base, self.hier_base
@@ -203,7 +206,9 @@ class GoldSniper:
             + "\nShkruaj /status per gjendjen.")
         self.tg.on_command("/status", self.status_text)
         self.tg.on_command("/start", self.status_text)
-        self.tg.on_command("/help", lambda: "Komandat: /status - balanca, pozicioni i hapur, tipi i dites.")
+        self.tg.on_command("/raport", lambda: self.weekly_report(self.mkt, datetime.now(timezone.utc)))
+        self.tg.on_command("/help", lambda: "Komandat: /status - balanca, pozicioni i hapur, tipi i dites | "
+                                            "/raport - raporti i javes deri tani.")
         self.tg.start_commands()
 
     def update_conversion(self):
@@ -360,6 +365,15 @@ class GoldSniper:
         want = self.market_at(now_dt)
         if want is not self.mkt:
             self.switch_market(want)
+        kind = report.due(now_dt, self.reports_sent)
+        if kind:
+            self.reports_sent.add((report.local(now_dt).date(), kind))
+            m = self.gold if kind == "gold" else self.btc
+            if m:
+                try:
+                    self.tg.send(self.weekly_report(m, now_dt, positions))
+                except McpError as e:
+                    log.error("Raporti javor: %s", e)
         self.manage(positions)
         self.check_daily_loss(positions)
         if self.cfg.news_on:
@@ -509,6 +523,7 @@ class GoldSniper:
             return
 
         self.my_position_ids.add(pid)
+        self.journal[pid] = {"module": module}
         if module == "main":
             self.trades_today += 1
         time.sleep(1)
@@ -833,6 +848,7 @@ class GoldSniper:
         px, exact = self.exit_price(pid, plan)
         entry, risk, buy = plan.get("entry"), plan.get("risk") or 1, plan.get("side") == "BUY"
         r = ((px - entry) if buy else (entry - px)) / risk if px and entry else 0.0
+        self.journal.setdefault(pid, {}).update(module=plan.get("module") or "main", r=r)
         bal, eq = self.balance()
         self.last_balance, self.last_equity = bal, eq
         # fitimi nga cmimet e ketij pozicioni (ndryshimi i balances perzihet kur mbyllen disa pozicione njeheresh)
@@ -853,6 +869,26 @@ class GoldSniper:
             + f"Balanca: {bal:,.2f} {self.deposit_asset}")
         log.info("Pozicioni %s u mbyll @ %.2f | %+.1fR | %s", pid, px or 0, r,
                  f"{pnl:+.2f} {self.deposit_asset}" if pnl is not None else "")
+
+    def weekly_report(self, m, now_dt, positions=None):
+        """Raporti i javes (ari: nga e hena) ose i fundjaves (btc: nga e shtuna) per tregun m."""
+        kind = "btc" if m.kind == "btc" else "gold"
+        start = report.week_start(now_dt, kind)
+        positions = self.my_positions() if positions is None else positions
+        open_txt = []
+        for p in positions:
+            if self.market_of(p) is not m:
+                continue
+            e = to_price(find_key(p, "price", "entryPrice", "openPrice")) or 0
+            txt = f"{side_of(p)} @ {e:.2f}"
+            if m is self.mkt:
+                bid, ask = self.spot()
+                px = bid if side_of(p) == "BUY" else ask
+                units = (find_key(p, "volume") or 0) / 100
+                eur = ((px - e) if side_of(p) == "BUY" else (e - px)) * units * self.usd_to_deposit
+                txt += f", tani {eur:+,.2f} {self.deposit_asset} (mbyllet ne kufirin e tregut)"
+            open_txt.append(txt)
+        return report.build(self, m, int(start.timestamp() * 1000), int(now_dt.timestamp() * 1000), open_txt)
 
     def send_day_summary(self, day):
         st = self.day_stats

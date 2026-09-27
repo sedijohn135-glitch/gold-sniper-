@@ -255,9 +255,13 @@ Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
 | 📈 Fitim i siguruar +XR | SL-ja ngjitet çdo +2R |
 | ✅ / ❌ U mbyll | rezultati në R dhe në EUR, balanca e re |
 | 📊 Përmbledhja e ditës | në fund të çdo dite me trade |
+| 📒 Raporti javor XAUUSD | **e premte 22:50** (ora e Kosovës/Shqipërisë): trade-t e javës, sipas modulit, në R dhe EUR |
+| 📒 Raporti i fundjavës BTCUSD | **e diel 22:50**: njësoj për BTC (pozicionet që mbyllen në 23:00 shfaqen si "ende hapur") |
 | ⚠️ / 🛑 | cTrader s'përgjigjet > 5 min, SL s'u vendos, u arrit humbja max ditore |
 
 Shkruaji botit **/status** në Telegram: të tregon balancën, pozicionin e hapur dhe tipin e ditës.
+**/raport** të dërgon raportin e javës deri në atë moment. Fitimi në raport merret nga cTrader-i, pra është i saktë
+edhe pas një rinisjeje; moduli i trade-ve të mbyllura para një rinisjeje shfaqet si "i panjohur".
 Komandat vetëm lexojnë; nga Telegram-i nuk mund të hapet ose mbyllet asnjë trade,
 dhe boti u përgjigjet vetëm mesazheve nga chat-i yt.
 
@@ -356,6 +360,7 @@ bot/data.py        marrja e qirinjve (M15, M5)
 bot/zones.py       zonat supply/demand fresh, zonat e thyera (flip), swing-et
 bot/confluence.py  moduli i konfluences (H1/H4 + zona fresh + trendline + rejection M5)
 bot/hierarchy.py   moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO + rejection M5)
+bot/report.py      raporti javor ne Telegram (e premte ari, e diel BTC)
 bot/news.py        snajperi i lajmeve dhe kalendari ForexFactory
 bot/markets.py     tregjet: XAUUSD e hene-e premte, BTCUSD te shtunen dhe te dielen
 bot/telegram.py    njoftimet dhe komanda /status
