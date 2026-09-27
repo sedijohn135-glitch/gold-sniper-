@@ -4,6 +4,7 @@ Mesazhet dergohen ne nje thread me vete, qe nje problem me Telegram-in
 te mos e ndaloje kurre tregtimin.
 """
 import json
+import os
 import logging
 import queue
 import threading
@@ -20,6 +21,7 @@ class Telegram:
         self.token = (token or "").strip()
         self.chat_id = str(chat_id or "").strip()
         self.enabled = bool(self.token and self.chat_id)
+        self.label = os.environ.get("TELEGRAM_LABEL", "🥇 GOLD SNIPER").strip()
         self._queue = queue.Queue()
         self._commands = {}
         if self.enabled:
@@ -31,7 +33,8 @@ class Telegram:
     # ------------------------------------------------------------ dergimi
     def send(self, text: str):
         if self.enabled:
-            self._queue.put(text[:4000])
+            # etiketa siper cdo mesazhi, qe ne Telegram te dallohet nga botet e tjera
+            self._queue.put((f"{self.label}\n" if self.label else "") + text[:3950])
 
     def _call(self, method, payload, timeout=20):
         req = urllib.request.Request(

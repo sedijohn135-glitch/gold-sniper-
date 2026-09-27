@@ -316,6 +316,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `ADR_DAYS` | `10` | sa ditë për mesataren e lëvizjes ditore |
 | `TELEGRAM_TOKEN` | – | tokeni i botit tënd të Telegram-it (nga @BotFather) |
 | `TELEGRAM_CHAT_ID` | – | ID e chat-it ku vijnë njoftimet |
+| `TELEGRAM_LABEL` | 🥇 GOLD SNIPER | etiketa sipër çdo mesazhi në Telegram (bosh = pa etiketë) |
 | `DRY_RUN` | `false` | `true` = vetëm sinjale në log, pa trade |
 | `RISK_PERCENT` | `0.5` | % e balancës që rrezikohet për trade |
 | `FIXED_LOTS` | `0` | nëse > 0, përdor gjithmonë këtë lot (p.sh. `0.05`) |
