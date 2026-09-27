@@ -60,7 +60,7 @@ def closed_positions(deals, symbol_id, units_scale=100):
                         units=vol / units_scale, opened=o.get("executionTimestamp", 0),
                         closed=c.get("executionTimestamp", 0),
                         commission=sum(x.get("commission", 0) or 0 for x in ds)))
-    return sorted(out, key=lambda x: x["closed"])
+    return sorted(out, key=lambda x: x["opened"])
 
 
 def build(bot, market, start_ms, end_ms, open_positions):
@@ -90,7 +90,10 @@ def build(bot, market, start_ms, end_ms, open_positions):
             p[3] += 1
             tot_r += r
         dt = local(datetime.fromtimestamp(t["opened"] / 1000, timezone.utc))
-        rows.append(f"{DAYS[dt.weekday()]} {dt:%H:%M} {t['side']} {t['entry']:.2f}->{t['exit']:.2f} | "
+        ct = local(datetime.fromtimestamp(t["closed"] / 1000, timezone.utc))
+        out = f"{ct:%H:%M}" if ct.date() == dt.date() else f"{DAYS[ct.weekday()]} {ct:%d.%m %H:%M}"
+        rows.append(f"{DAYS[dt.weekday()]} {dt:%d.%m} hyrja {dt:%H:%M}, dalja {out} | "
+                    f"{t['side']} {t['entry']:.2f}->{t['exit']:.2f} | "
                     f"{MODULE_NAMES.get(mod, mod)} | " + (f"{r:+.1f}R | " if r is not None else "") + f"{eur:+,.2f}")
     s = local(datetime.fromtimestamp(start_ms / 1000, timezone.utc))
     e = local(datetime.fromtimestamp(end_ms / 1000, timezone.utc))
