@@ -199,6 +199,27 @@ Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, tr
 >
 > ⚠️ Tokeni `Bearer` jep akses tregtimi në llogarinë tënde. Mos e shkruaj kurrë në kod ose në GitHub, vetëm te Railway → Variables.
 
+### Moduli i katërt: LAJMI (CPI, NFP, FOMC)
+
+Lajmet e mëdha të SHBA-së dalin në orë fikse të New York-ut: **8:30** (CPI, NFP, PPI, shitjet),
+**10:00** (ISM, JOLTS) dhe **14:00** (FOMC). Boti i ndjek vetë:
+
+- Nëse qiri M5 i lajmit kërcen **≥ 2.5 × ATR** me trup të fortë, boti hyn **në drejtim të lajmit**
+  në mbyllje të qiri. SL pas qiri; pastaj break-even te +1R dhe trailing 0.4 × ADR (label `GoldSniper-N`).
+- Kalendari lexohet vetë nga ForexFactory: jep emrin e lajmit në Telegram (📰) dhe **ndalon hyrjet e
+  sniper-it 30 min para lajmeve High USD**, sepse aty tregu lëviz pa drejtim dhe humbet.
+- Nëse kalendari s'arrihet, moduli punon gjithsesi nga orët fikse dhe kërcimi i çmimit.
+
+| 8 muaj ari | Trade | Rezultati | Shk–maj | Qer–sht |
+|---|---|---|---|---|
+| **Ndiq lajmin + trailing** (live) | 25 | **+24.6R** | +13.1R | +11.5R |
+| Ndiq lajmin + TP 2R | 26 | +4.2R | | |
+| Prit një qiri konfirmim | 7 | +3.7R | | |
+| **Kundër lajmit (fade)** | 32 | **−22R deri −9R** | | |
+
+Lëvizje reale lajmi ka rreth **1 në javë**. Fitimi vjen nga pak lajme të mëdha, si 19 gushti (+7R):
+pa 3 më të mirat rezultati është afër zeros. Për ta fikur: `NEWS=false`.
+
 ### Fundjava: BTCUSD (e shtunë dhe e diel)
 
 Ari është i mbyllur në fundjavë, prandaj boti kalon vetë te **BTCUSD**:
@@ -308,6 +329,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIERARCHY` | `true` | moduli i tretë i hierarkisë (`false` = joaktiv) |
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
+| `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
 | `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |
 | `BTC_MAX_LOTS` | si `MAX_LOTS` | loti maksimal për BTC (1 lot = 1 BTC) |
@@ -327,6 +349,7 @@ bot/data.py        marrja e qirinjve (M15, M5)
 bot/zones.py       zonat supply/demand fresh, zonat e thyera (flip), swing-et
 bot/confluence.py  moduli i konfluences (H1/H4 + zona fresh + trendline + rejection M5)
 bot/hierarchy.py   moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO + rejection M5)
+bot/news.py        snajperi i lajmeve dhe kalendari ForexFactory
 bot/markets.py     tregjet: XAUUSD e hene-e premte, BTCUSD te shtunen dhe te dielen
 bot/telegram.py    njoftimet dhe komanda /status
 bot/config.py      parametrat nga variablat e mjedisit

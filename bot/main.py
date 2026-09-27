@@ -19,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import confluence as conf
 from . import hierarchy as hier
+from . import news
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .markets import Market
@@ -112,7 +113,8 @@ class GoldSniper:
         self.last_balance = self.last_equity = None
         self.open_summary = []   # pozicionet e hapura (per /status)
         # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
-        self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H"}
+        self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N"}
+        self.calendar = news.Calendar()
         self.conf_base = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
         self.hier_base = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
         self.conf_params, self.hier_params = self.conf_base, self.hier_base
@@ -176,6 +178,9 @@ class GoldSniper:
             if c.conf_on:
                 log.info("Moduli KONFLUENCE: >= %d nivele fresh (me te pakten nje H1/H4) + rejection M5 | TP >= %.1fR",
                          c.conf_min_levels, c.conf_rr)
+            if c.news_on:
+                log.info("Moduli LAJMI: 8:30/10:00/14:00 NY, qiri M5 >= 2.5 x ATR -> hyrje ne drejtim te lajmit, "
+                         "trailing | sniper pa hyrje 30 min para lajmeve High USD (ForexFactory)")
             if c.hier_on:
                 log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
                          "(divergjence AO ose retest SBR/RBS) + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
@@ -275,7 +280,7 @@ class GoldSniper:
         if plan and plan.get("module"):
             return plan["module"]
         tags = (find_key(pos, "label"), find_key(pos, "comment"))
-        return next((m for m in ("conf", "hier") if self.labels[m] in tags), "main")
+        return next((m for m in ("conf", "hier", "news") if self.labels[m] in tags), "main")
 
     # ------------------------------------------------------------ loop
     def run(self):
@@ -345,13 +350,15 @@ class GoldSniper:
             self.switch_market(want)
         self.manage(positions)
         self.check_daily_loss(positions)
-        if self.cfg.conf_on or self.cfg.hier_on:
+        if self.cfg.news_on:
+            self.calendar.refresh()
+        if self.cfg.conf_on or self.cfg.hier_on or self.cfg.news_on:
             try:
                 self.m5_tick(now, positions)
             except McpError as e:
                 log.error("Modulet M5: gabim cTrader: %s", e)
         self.open_summary = [
-            {"conf": "[K] ", "hier": "[H] "}.get(self.module_of(p), "")
+            {"conf": "[K] ", "hier": "[H] ", "news": "[L] "}.get(self.module_of(p), "")
             + f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
             f" @ {to_price(find_key(p, 'price', 'entryPrice', 'openPrice')) or 0:.2f}"
             f" | SL {to_price(find_key(p, 'stopLoss')) or 0:.2f}" for p in positions]
@@ -410,6 +417,9 @@ class GoldSniper:
         if not self.mkt.can_open(datetime.now(timezone.utc)):
             return log.info("  injoruar: jashte orarit te %s (%d UTC)", self.mkt.name, hour)
 
+        soon = self.calendar.upcoming(int(time.time() * 1000), 30) if c.news_on and self.mkt.kind == "gold" else None
+        if soon:
+            return log.info("  injoruar: lajm i madh pas pak (%s)", soon)
         bid, ask = self.spot()
         if ask - bid > c.max_spread:
             return log.info("  injoruar: spread %.2f > %.2f", ask - bid, c.max_spread)
@@ -452,7 +462,7 @@ class GoldSniper:
         label = self.labels[module]
         if tp_price is not None:
             tp_dist = abs(tp_price - ref_price)
-        if tp_dist is None and not c.trailing:
+        if tp_dist is None and not c.trailing and module != "news":
             tp_dist = risk * c.rr
         log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | %s", side, lots, volume, risk,
                  f"TP {tp_dist:.2f}$" if tp_dist else "pa TP (trailing)")
@@ -508,7 +518,8 @@ class GoldSniper:
         self.plans[pid] = {"sl": round(sl, 2), "tp": tp, "risk": risk, "best": entry,
                            "side": side, "entry": entry, "lots": lots, "bal_open": bal_open, "lot_size": c.lot_size,
                            "opened": int(time.time() * 1000), "locked_r": 0,
-                           "module": module, "fixed": module != "main", "symbol": c.symbol_name}
+                           "module": module, "fixed": module not in ("main", "news"), "symbol": c.symbol_name,
+                           "trail_fixed": module == "news"}
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
@@ -589,7 +600,7 @@ class GoldSniper:
             if self.market_of(pos) is not self.mkt:
                 continue          # pozicion i tregut tjeter: mbrohet vetem me SL/TP (mbyllet ne kufi)
             module = self.module_of(pos)
-            if module != "main":
+            if module not in ("main", "news"):
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
                 if plan is None:
                     entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
@@ -633,6 +644,8 @@ class GoldSniper:
                          sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("conf", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
                                  f"KONFLUENCE: {levels} + rejection M5")
+        if c.news_on and self.mkt.kind == "gold":
+            self.news_tick(newest, now, positions)
         if c.hier_on:
             p = self.hier_params
             sig = hier.signal(self.m5, p)
@@ -642,6 +655,36 @@ class GoldSniper:
                          "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
                                  f"HIERARKIA: muri {sig['htf']} s'u thye + {conf_txt} + rejection M5")
+
+    def news_tick(self, newest, now, positions):
+        """Qiri i lajmit (8:30/10:00/14:00 NY) me kercim >= 2.5 x ATR -> hyrje ne drejtim te lajmit."""
+        c = self.cfg
+        sig = news.news_signal(self.m5, sl_buf=0.5 * self.mkt.scale)
+        if not sig:
+            return
+        names = self.calendar.titles_at(newest.t) or ["lajm i madh SHBA"]
+        log.info("LAJM %s | %s | qiri %s range %.2f (ATR %.2f)", sig["side"], ", ".join(names), utc(newest.t),
+                 newest.h - newest.l, sig["atr"])
+        if self.daily_limit_hit:
+            return log.info("  injoruar: u arrit humbja max ditore")
+        if any(self.module_of(q) == "news" for q in positions):
+            return log.info("  injoruar: moduli i lajmeve ka pozicion te hapur")
+        if not self.mkt.can_open(datetime.fromtimestamp(now / 1000, timezone.utc)):
+            return log.info("  injoruar: jashte orarit")
+        bid, ask = self.spot()
+        if ask - bid > 2 * c.max_spread:
+            return log.info("  injoruar: spread %.2f", ask - bid)
+        buy = sig["side"] == "BUY"
+        entry = ask if buy else bid
+        risk = abs(entry - sig["sl"])
+        adr = self.adr or 0
+        if (buy and entry <= sig["sl"]) or (not buy and entry >= sig["sl"]) or (adr and risk > 0.5 * adr):
+            return log.info("  injoruar: SL %.2f$ jashte kufijve", risk)
+        risk = max(risk, c.min_sl)
+        lots = self.lots_for(risk)
+        if lots > 0:
+            self.open_trade(sig["side"], lots, risk, entry, note=f"📰 LAJMI: {', '.join(names)} | kercim "
+                            f"{newest.h - newest.l:.1f}$ ne 5 min -> ne drejtim te lajmit", module="news")
 
     def fixed_trade(self, module, sig, min_rr, min_sl, max_sl, now, positions, note):
         """Trade me SL/TP fikse per modulet M5 (nje pozicion per modul)."""
@@ -700,8 +743,8 @@ class GoldSniper:
         if c.trailing and self.adr and fav >= risk * c.trail_start_r:
             # dite trendi ne drejtimin e trade-it -> jepi me shume hapesire; pasi trade-i njihet
             # si trend mbetet i tille, qe nje rikthim te mos e ngushtoje trailing-un
-            with_trend = self.day_kind == ("UP" if buy else "DOWN")
-            if c.sticky_trend:
+            with_trend = self.day_kind == ("UP" if buy else "DOWN") and not plan.get("trail_fixed")
+            if c.sticky_trend and not plan.get("trail_fixed"):
                 plan["wide"] = plan.get("wide", False) or with_trend
                 with_trend = with_trend or plan["wide"]
             dist = (c.trend_trail_adr if with_trend and c.trend_trail_adr > 0 else c.trail_adr) * self.adr

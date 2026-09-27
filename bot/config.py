@@ -53,6 +53,7 @@ class Config:
     hier_on: bool = True          # moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO)
     hier_rr: float = 2.0
     hier_min_sl: float = 3.0
+    news_on: bool = True          # moduli i lajmeve (CPI/NFP/FOMC) + pa hyrje sniper 30 min para lajmeve
     btc_on: bool = True           # BTCUSD te shtunen dhe te dielen (ari nga e hena ne te premten)
     btc_symbol: str = "BTCUSD"
     btc_scale: float = 20.0       # vlerat ne $ te arit x kaq per BTC (levizja ditore ~20 x me e madhe)
@@ -146,6 +147,7 @@ class Config:
             hier_on=_b("HIERARCHY", True),
             hier_rr=_f("HIER_RR", 2.0),
             hier_min_sl=_f("HIER_MIN_SL", 3.0),
+            news_on=_b("NEWS", True),
             btc_on=_b("BTC_WEEKEND", True),
             btc_symbol=str(_env("BTC_SYMBOL", "BTCUSD")).strip(),
             btc_scale=_f("BTC_SCALE", 20.0),
