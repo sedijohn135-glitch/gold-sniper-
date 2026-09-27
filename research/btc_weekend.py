@@ -119,3 +119,6 @@ if __name__ == "__main__":
 #   ADR vetem nga te shtunat/dielat (4/6/8 dite, k=15/20) per sniper-in: -42R deri -5R, me keq
 #   se ADR nga te gjitha ditet (+3.2R / +17.1R). ADR i gjere i ditëve te javes mbron nga ditet e
 #   qeta te fundjaves (me pak hyrje te gabuara, trailing me i gjere); boti live s'ndryshon.
+#   Pragu i dites se trendit per sniper-in (k=20): 0.7 x ADR +17.1R (live) | 0.5 +11.7R | 0.4 +12.5R |
+#   0.3 -3.6R; pa rotacionin nga eficienca: 0.7 +13.1R | 0.4 +10.4R | 0.3 -5.0R. Pragu me i ulet s'ndihmon.
+#   Trailing 0.3/0.25/0.2 x ADR: +21.1R / +14.0R / +17.0R kundrejt +17.1R: pa ndryshim te qarte.
