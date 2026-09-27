@@ -116,3 +116,6 @@ if __name__ == "__main__":
 #   konfluenca k=10  27 trade  +3.7R | k=15  33 trade +3.9R | k=20  37 trade  +3.6R (qer-sht -7.2R)
 #   Qershor-shtator negativ ne cdo variant; vetem ~1 ne 3 fundjava ne fitim. Pa avantazh te qarte:
 #   boti live e tregton BTC-ne ne fundjave me rrezik 0.25% (gjysma e arit), k = 20.
+#   ADR vetem nga te shtunat/dielat (4/6/8 dite, k=15/20) per sniper-in: -42R deri -5R, me keq
+#   se ADR nga te gjitha ditet (+3.2R / +17.1R). ADR i gjere i ditëve te javes mbron nga ditet e
+#   qeta te fundjaves (me pak hyrje te gabuara, trailing me i gjere); boti live s'ndryshon.
