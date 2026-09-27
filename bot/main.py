@@ -270,7 +270,9 @@ class GoldSniper:
             comment = find_key(p, "comment")
             sym = find_key(p, "symbolId")
             mine = self.labels.values()
-            if pid in self.my_position_ids or label in mine or (comment in mine and sym in self.markets):
+            # cTrader MCP s'e kthen label-in/koment-in: llogaria eshte e botit, prandaj cdo pozicion
+            # ne simbolet e tij (XAUUSD, BTCUSD) eshte i botit, edhe pas nje rinisjeje.
+            if pid in self.my_position_ids or label in mine or comment in mine or sym in self.markets:
                 out.append(p)
         return out
 
@@ -280,7 +282,11 @@ class GoldSniper:
         if plan and plan.get("module"):
             return plan["module"]
         tags = (find_key(pos, "label"), find_key(pos, "comment"))
-        return next((m for m in ("conf", "hier", "news") if self.labels[m] in tags), "main")
+        m = next((m for m in ("conf", "hier", "news") if self.labels[m] in tags), None)
+        if m:
+            return m
+        # pozicion nga para rinisjes pa label: me TP -> SL/TP fikse ("old"), pa TP -> sniper me trailing
+        return "old" if to_price(find_key(pos, "takeProfit")) else "main"
 
     # ------------------------------------------------------------ loop
     def run(self):

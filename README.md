@@ -271,6 +271,13 @@ Vendosja:
 2. Railway → **Variables** → shto `TELEGRAM_TOKEN` (tokeni nga @BotFather) dhe `TELEGRAM_CHAT_ID`.
 3. Railway e rinis botin; brenda pak sekondash duhet të vijë mesazhi 🟢 Gold Sniper u nis.
 
+### Pozicionet pas një rinisjeje
+
+cTrader nuk e kthen label-in e pozicioneve, prandaj boti i konsideron të vetat **të gjitha pozicionet
+në XAUUSD dhe BTCUSD** (llogaria është vetëm për botin: mos hap trade me dorë në këto simbole).
+Pas një rinisjeje në Railway i gjen vetë: pozicionet pa TP i menaxhon si sniper (break-even, trailing),
+ato me TP i lë me SL/TP fikse. Të gjitha mbyllen në kufirin e tregut (e premte 19:00 / e diel 21:00 UTC).
+
 ### Trade-i i parë
 
 Kodi nuk është provuar ende me një urdhër të vërtetë. Kur boti hap trade-in e parë, shiko log-et:
