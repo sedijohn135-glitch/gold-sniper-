@@ -16,6 +16,7 @@
 | 8 | **Boti adaptiv:** konteksti mund të jetë në H1 ose H4: zonë S/D, support, divergjencë AO ose QM | `research/adaptive.py` | 1008 kombinime: mban vetëm zona H1 fresh + thyerja M5; H4 dhe divergjencat HTF s'mbajnë | pjesa që mban është tashmë live (moduli 5) |
 | 9 | **Truri (sistem pikësh):** e detyrueshme thyerja e një zone S/D në M5/M15/M30 + të paktën një arsye HTF (SnD, SnR, SBR/RBS, trendline, QM, AO). Pastaj konfluencat LTF numërohen: sa më shumë, aq më i fortë setup-i | `research/brain.py` | numri i konfluencave s'rritet me fitimin; peshat e mësuara dështojnë 15/16 herë jashtë periudhës; **trendline + zonë HTF**: 23 trade +34R (DD 4R), por 3 trade japin 32R | kërkim; kandidat për t'u ri-testuar me të dhëna të reja |
 | 10 | **QM në H1/H4:** çmimi reagon fort te left shoulder + zona fresh në të njëjtin nivel në TF të tjera + rejection | `research/qm_htf.py` | 214 QM në 8 muaj; si nivel shtesë në konfluencë ul pak fitimin (+21.3R kundrejt +23.3R); QM + zona + rejection: −7.3R deri −0.4R | kërkim; s'u fut live |
+| 11 | **Trendline touch i 3-të në TF të ndryshme** (M15, M30, H1, H4) si nivel konfluence | `research/tl_timeframes.py` | M30 +23.3R (live), M15 +23.1R, H1 +20.1R, H4 +9.8R, të gjitha bashkë +10.9R | M30 mbetet live |
 
 ## Shembulli 6 në detaje (4 gusht 2026)
 
