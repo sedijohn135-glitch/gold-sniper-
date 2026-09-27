@@ -134,3 +134,11 @@ if __name__ == "__main__":
     for c in COSTS:
         T = [x for m in mods for x in allT[(m, c)]]
         print(f"TE GJITHA {c:12} {stats(T)}")
+
+# Rezultati (HistData M1 2016-2025, cdo vit me shkallen e cmimit, spread 0.20$ / kosto 0.66$ ne 4,500$):
+#   sniper      8559 trade -375.0R (-0.044R/trade) | kosto 0.66: -908.5R. Pozitiv vetem 2020, 2022, 2025.
+#               Pa shkallezim te $ (k=1): -119.5R. I njejti kod ne 8 muajt e 2026: +149.3R (testi eshte i sakte).
+#   hierarkia   3368 trade -144.1R (-0.043R/trade) | kosto 0.66: -551.0R. 2016 +67.6R, 2019 +37.7R, pjesa tjeter negative.
+#   konfluenca  1304 trade   -6.0R (-0.005R/trade) | kosto 0.66: -179.3R.
+#   Te gjitha   4672 trade -150.1R (hier+conf). Perfundimi: +296R i 8 muajve te 2026 s'perseritet ne 10 vjet;
+#   2026 (ari 4,000-5,000$, levizje shume te medha) eshte nje periudhe e vecante per keto module.
