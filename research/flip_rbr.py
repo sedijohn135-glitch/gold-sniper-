@@ -99,7 +99,7 @@ def patterns(B, tf_ms, stat=None):
                 st["RBR pas thyerjes"] += 1
                 if blo <= zhi + 0.25 * x and bhi >= zlo - 0.25 * x:     # i njejti nivel (+-0.25 ATR)
                     st["RBR ne te njejtin nivel"] += 1
-                    out.append((B[ob].t + tf_ms, zlo, zhi, x))
+                    out.append((B[ob].t + tf_ms, zlo, zhi, x, base.t))
                     found = True
                 break
             if found:
@@ -111,6 +111,28 @@ def engulf_times(B, tf_ms):
     """Kohet e mbylljes se qirinjve bullish engulfing."""
     return [b.t + tf_ms for p, b in zip(B, B[1:])
             if p.c < p.o and b.c > b.o and b.c > p.o and b.o <= p.c]
+
+
+def tf_lines(B, tf_ms):
+    """Trendline ne rritje nga dy swing low (k=3) ne cdo TF: (njihet, i1, v1, pjerresia, i vdekur)."""
+    lows, out = [], []
+    for c, i, k, v in swings(B, 3):
+        if k != "L":
+            continue
+        lows.append((i, v))
+        if len(lows) < 2:
+            continue
+        (i1, v1), (i2, v2) = lows[-2], lows[-1]
+        if i2 - i1 < 5 or v2 <= v1:
+            continue
+        slope = (v2 - v1) / (i2 - i1)
+        dead = min(len(B), i2 + 240)
+        for q in range(i2 + 1, dead):
+            if B[q].c < v1 + slope * (q - i1):
+                dead = q
+                break
+        out.append((B[c].t + tf_ms, i1, v1, slope, dead))
+    return out
 
 
 def h1_lines(h1):
@@ -196,9 +218,17 @@ def candidates(m1, k):
         lines = h1_lines(h1)
         h1t = [b.t for b in h1]
         eng = {tf: engulf_times(aggregate(bars, mins), mins * M1) for tf, mins in (("H4", 240), ("H1", 60), ("M30", 30))}
+        # konfluencat ne TF te ndryshme: trendline dhe SNR (maje/fund swing horizontal)
+        ctx = {}
+        for ctf, cm in (("H4", 240), ("H1", 60), ("M30", 30), ("M15", 15)):
+            CB = aggregate(bars, cm)
+            sw = [(CB[c].t + cm * M1, CB[i].t, v) for c, i, kk, v in swings(CB, 3)]
+            ctx[ctf] = dict(ms=cm * M1, t=[b.t for b in CB], atr=atr_series(CB, 14), lines=tf_lines(CB, cm * M1),
+                            lk=None, sw=sw, swk=[x[0] for x in sw])
+            ctx[ctf]["lk"] = [x[0] for x in ctx[ctf]["lines"]]
         for tf, mins in TFS.items():
             B = bars if mins == 1 else aggregate(bars, mins)
-            for known, zlo, zhi, x in patterns(B, mins * M1):
+            for known, zlo, zhi, x, tbase in patterns(B, mins * M1):
                 # cmimet reale: per SELL pasqyrohen mbrapsht
                 lvl = zhi if buy else -zhi                       # kufiri i hyrjes (open i qiririt baze)
                 far = zlo if buy else -zlo
@@ -251,6 +281,27 @@ def candidates(m1, k):
                                     break
                         f["tl"] = tl
                         f["adr"] = adr.get(t // 86_400_000, 0) >= 1.6
+                        for ctf, cx in ctx.items():
+                            ci = bisect.bisect_right(cx["t"], t - cx["ms"]) - 1     # qiri i fundit i mbyllur
+                            ca = cx["atr"][ci] if ci >= 0 else float("nan")
+                            tol = 0.2 * ca if ca == ca else 0.0
+                            lo_, hi_z = zlo - tol, zhi + tol
+                            ok = False
+                            L, lk = cx["lines"], cx["lk"]
+                            for q in range(bisect.bisect_left(lk, t - 20 * 86_400_000), bisect.bisect_right(lk, t)):
+                                kn, i1, v1, slope, dead = L[q]
+                                if i1 < ci < dead and lo_ <= v1 + slope * (ci - i1) <= hi_z:
+                                    ok = True
+                                    break
+                            f["tl_" + ctf] = ok
+                            # SNR: swing i njohur para bazes se DBD-se (ne te majte), 20 ditet e fundit
+                            ok = False
+                            sw, swk = cx["sw"], cx["swk"]
+                            for q in range(bisect.bisect_left(swk, tbase - 20 * 86_400_000), bisect.bisect_left(swk, tbase)):
+                                if lo_ <= sw[q][2] <= hi_z:
+                                    ok = True
+                                    break
+                            f["snr_" + ctf] = ok
                         out.append(dict(tf=tf, mode=mode, cost=cost, side=side, t=t, r=sim[0], exit=sim[1], **f))
     return out
 
@@ -276,6 +327,50 @@ def stats(C, rr):
     return n, s
 
 
+CTF = ("H4", "H1", "M30", "M15")
+
+
+def n_tl(c):
+    return sum(c["tl_" + x] for x in CTF)
+
+
+def n_snr(c):
+    return sum(c["snr_" + x] for x in CTF)
+
+
+GROUPS = {
+    "te gjitha": lambda c: True,
+    "TL ne ndonje TF": lambda c: n_tl(c) >= 1,
+    "TL ne >= 2 TF": lambda c: n_tl(c) >= 2,
+    "SNR ne 0-1 TF": lambda c: n_snr(c) <= 1,
+    "SNR ne >= 3 TF": lambda c: n_snr(c) >= 3,
+    "SNR ne 4 TF": lambda c: n_snr(c) == 4,
+    "TL + SNR >= 2 TF": lambda c: n_tl(c) >= 1 and n_snr(c) >= 2,
+    "TL + SNR 4 TF": lambda c: n_tl(c) >= 1 and n_snr(c) == 4,
+    "konfluenca >= 5": lambda c: n_tl(c) + n_snr(c) >= 5,
+}
+
+
+def report(per, cost=0.17):
+    """Te gjitha TF-te e pattern-it bashke (nje pozicion per TF), R per trade TP 2R/3R/4R."""
+    for mode in ("limit", "rej"):
+        for tfs in (("M1",), ("M5",), ("H1", "M30", "M15")):
+            print(f"\n=== pattern {'+'.join(tfs)} | {mode} | kosto {cost}$ | R per trade TP 2R/3R/4R")
+            for g, fn in GROUPS.items():
+                line = f"{g:18}"
+                for lbl, ys in (("16-20", range(2016, 2021)), ("21-25", range(2021, 2026)), ("2026", (2026,))):
+                    tot = {rr: [0, 0.0] for rr in RRS}
+                    for tf in tfs:
+                        X = [c for y in ys for c in per[y] if c["tf"] == tf and c["mode"] == mode
+                             and c["cost"] == cost and fn(c)]
+                        for rr in RRS:
+                            n, s_ = stats(X, rr)
+                            tot[rr][0] += n
+                            tot[rr][1] += s_
+                    line += f" | {lbl} {tot[2][0]:5} tr " + "/".join(f"{tot[rr][1] / max(tot[rr][0], 1):+.2f}" for rr in RRS)
+                print(line, flush=True)
+
+
 if __name__ == "__main__":
     folder, p26 = sys.argv[1], sys.argv[2]
     per = {}
@@ -287,20 +382,7 @@ if __name__ == "__main__":
     per[2026] = candidates(pickle.load(open(p26, "rb")), 1.0)
     print(2026, len(per[2026]), "hyrje", flush=True)
     pickle.dump(per, open("/tmp/flip_rbr.pkl", "wb"))
-    for cost in COSTS:
-        for mode in ("limit", "rej"):
-            for tf in TFS:
-                print(f"\n=== {tf} {mode} kosto {cost}$  (R per trade: 2016-20 | 2021-25 | 2026, TP 2R/3R/4R)")
-                for fname, fn in FILTERS.items():
-                    line = f"{fname:16}"
-                    for lbl, ys in (("16-20", range(2016, 2021)), ("21-25", range(2021, 2026)), ("2026", (2026,))):
-                        C = [c for y in ys for c in per[y] if c["tf"] == tf and c["mode"] == mode and c["cost"] == cost and fn(c)]
-                        parts = []
-                        for rr in RRS:
-                            n, s = stats(C, rr)
-                            parts.append(f"{s / max(n, 1):+.2f}")
-                        line += f" | {lbl} {stats(C, 2)[0]:5} tr " + "/".join(parts)
-                    print(line, flush=True)
+    report(per)
 
 # Rezultati (HistData M1 2016-2025 + cTrader 2026, kosto 0.17$, nje pozicion per TF), R per trade TP 2R/3R/4R:
 #   Pattern-i i plote eshte i rralle: H1 ~2-3 ne vit, M30 ~4, M15 ~10, M5 ~50, M1 ~300.
@@ -311,3 +393,12 @@ if __name__ == "__main__":
 #   H1+M30+M15 bashke, 10 vjet: limit 190 trade -35R (TP2R); rej 153 trade -8R; me engulfing 58-77 trade
 #   ~0; me trendline H1 vetem 12-19 trade ne 10 vjet (s'mjafton per gjykim).
 #   Perfundimi: pa avantazh te matshem; konfluencat (engulfing HTF, trendline, ADR) s'e ndryshojne.
+#
+# Konfluenca trendline + SNR ne H4/H1/M30/M15 (TL qe arrin ne zone tani; SNR = swing i formuar ne te majte
+# te bazes, 20 ditet e fundit, +-0.2 ATR e atij TF), R per trade TP 2R (16-20 | 21-25 | 2026):
+#   M1 limit: te gjitha -0.10|-0.17|-0.23; TL+SNR>=2 TF +0.01|-0.01|0.00; TL+SNR 4 TF +0.15|-0.15|+0.15 (~50 tr);
+#             konfluenca>=5 +0.10|-0.14|+0.12. Me TP 3R/4R te gjitha negative.
+#   M1 rej:   te gjitha 0.00|-0.13|-0.03; TL+SNR>=2 TF -0.13|-0.15|-0.40; konfluenca>=5 -0.15|-0.35|-0.31.
+#   M5 rej:   TL+SNR>=2 TF -0.28|+0.33|-0.25 (~28 tr); M5 limit TL ne ndonje TF -0.27|-0.33|-0.40.
+#   H1+M30+M15: 4-24 trade per grup ne 5 vjet, rezultate qe ndryshojne shenje nga periudha ne periudhe.
+#   Me shume konfluenca s'jep rezultat me te mire: s'ka rritje te qendrueshme nga 0 -> 5+ konfluenca.
