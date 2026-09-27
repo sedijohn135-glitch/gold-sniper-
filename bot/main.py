@@ -129,6 +129,11 @@ class GoldSniper:
         self.last_m5_t = None
         self.error_since = None  # kur filloi problemi i fundit me cTrader
         self.error_sent = 0.0
+        self.pending = {}        # positionId -> [plan, ms]: u mbyll, pritet deal-i i mbylljes per raportin
+        # plan-et dhe ditari ruhen ne skedar: pas nje rinisjeje boti di modulin e cdo trade-i
+        # (ne Railway mbeten edhe pas deploy-it vetem me nje volume te montuar ne /data)
+        self.state_path = os.environ.get("STATE_FILE") or ("/data/state.json" if os.path.isdir("/data") else "state.json")
+        self.state_saved = ""
 
     # ------------------------------------------------------------ setup
     def setup(self):
@@ -193,6 +198,7 @@ class GoldSniper:
                      s.trend_day_adr, c.trend_trail_adr, ", mbetet deri ne mbyllje" if c.sticky_trend else "",
                      s.eff_rot, c.rot_tp_adr)
         self.switch_market(self.market_at(datetime.now(timezone.utc)), announce=False)
+        self.load_state()
         bal, eq = self.balance()
         self.last_balance, self.last_equity = bal, eq
         self.tg.send(
@@ -211,6 +217,40 @@ class GoldSniper:
         self.tg.on_command("/help", lambda: "Komandat: /status - balanca, pozicioni i hapur, tipi i dites | "
                                             "/raport - raporti i javes deri tani.")
         self.tg.start_commands()
+
+    def load_state(self):
+        try:
+            with open(self.state_path) as f:
+                st = json.load(f)
+        except FileNotFoundError:
+            log.info("Gjendja: %s s'ekziston (nisje e pare ose pa volume)", self.state_path)
+            return
+        except (OSError, ValueError) as e:
+            log.warning("Gjendja %s s'u lexua: %s", self.state_path, e)
+            return
+        self.plans.update({int(k): v for k, v in st.get("plans", {}).items()})
+        self.journal.update({int(k): v for k, v in st.get("journal", {}).items()})
+        self.pending.update({int(k): v for k, v in st.get("pending", {}).items()})
+        self.reports_sent |= {(datetime.fromisoformat(d).date(), k) for d, k in st.get("reports_sent", [])}
+        self.my_position_ids |= set(self.plans)
+        log.info("Gjendja nga %s: %d plane, %d trade ne ditar", self.state_path, len(self.plans), len(self.journal))
+
+    def save_state(self):
+        # ditari: mjaftojne 400 trade-t e fundit (~4 muaj)
+        for k in sorted(self.journal)[:-400]:
+            del self.journal[k]
+        txt = json.dumps({"plans": self.plans, "journal": self.journal, "pending": self.pending,
+                          "reports_sent": sorted([str(d), k] for d, k in self.reports_sent)[-20:]})
+        if txt == self.state_saved:
+            return
+        try:
+            tmp = self.state_path + ".tmp"
+            with open(tmp, "w") as f:
+                f.write(txt)
+            os.replace(tmp, self.state_path)
+            self.state_saved = txt
+        except OSError as e:
+            log.warning("Gjendja s'u ruajt ne %s: %s", self.state_path, e)
 
     def update_conversion(self):
         """Sa vlen 1 USD ne valuten e llogarise (per llogaritjen e lotit)."""
@@ -369,15 +409,19 @@ class GoldSniper:
         if want is not self.mkt:
             self.switch_market(want)
         kind = report.due(now_dt, self.reports_sent)
-        if kind:
+        m = (self.gold if kind == "gold" else self.btc) if kind else None
+        # raporti pasi mbyllen (dhe raportohen) trade-t e tregut; me se voni 23:55 ora jote
+        busy = m and (any(self.market_of(p) is m for p in positions) or
+                      any(v[0].get("symbol") == m.name for v in self.pending.values()))
+        if kind and (not busy or report.local(now_dt).minute >= 55 and report.local(now_dt).hour == 23):
             self.reports_sent.add((report.local(now_dt).date(), kind))
-            m = self.gold if kind == "gold" else self.btc
             if m:
                 try:
                     self.tg.send(self.weekly_report(m, now_dt, positions))
                 except McpError as e:
                     log.error("Raporti javor: %s", e)
         self.manage(positions)
+        self.save_state()
         self.check_daily_loss(positions)
         if self.cfg.news_on:
             self.calendar.refresh()
@@ -628,24 +672,34 @@ class GoldSniper:
                 self.protect(pid, pos)
                 continue
             if self.market_of(pos) is not self.mkt:
-                continue          # pozicion i tregut tjeter: mbrohet vetem me SL/TP (mbyllet ne kufi)
+                # pozicion i tregut tjeter: mbrohet vetem me SL/TP (mbyllet ne kufi); pa plan (pas rinisjes)
+                # krijohet nje plan minimal qe mbyllja te raportohet
+                if plan is None:
+                    self.restore_plan(pid, pos, "main" if find_key(pos, "takeProfit") is None else "old",
+                                      self.market_of(pos))
+                continue
             if plan is None and self.adr is None:
                 continue          # pas rinisjes: prit ADR-ne (tick-u i ardhshem) per te njohur modulin
             module = self.module_of(pos)
             if module not in ("main", "news"):
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
                 if plan is None:
-                    entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
-                    sl = to_price(find_key(pos, "stopLoss")) or entry
-                    self.plans[pid] = {"sl": sl, "tp": to_price(find_key(pos, "takeProfit")),
-                                       "risk": abs(entry - sl) or 1.0, "best": entry, "ok": True,
-                                       "side": side_of(pos), "entry": entry,
-                                       "lots": (find_key(pos, "volume") or 0) / (self.cfg.lot_size * 100),
-                                       "bal_open": self.last_balance, "opened": int(time.time() * 1000),
-                                       "module": module, "fixed": True, "symbol": self.mkt.name,
-                                       "lot_size": self.cfg.lot_size}
+                    self.restore_plan(pid, pos, module, self.mkt)
                 continue
             self.manage_stop(pid, pos, plan)
+
+    def restore_plan(self, pid, pos, module, m):
+        """Plan per nje pozicion pa plan (nga para rinisjes): SL/TP fikse, moduli i hamendesuar."""
+        entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
+        sl = to_price(find_key(pos, "stopLoss")) or entry
+        self.plans[pid] = {"sl": sl, "tp": to_price(find_key(pos, "takeProfit")),
+                           "risk": abs(entry - sl) or 1.0, "best": entry, "ok": True,
+                           "side": side_of(pos), "entry": entry,
+                           "lots": (find_key(pos, "volume") or 0) / (m.lot_size * 100),
+                           "bal_open": self.last_balance, "opened": int(time.time() * 1000),
+                           "module": module, "fixed": True, "symbol": m.name, "lot_size": m.lot_size,
+                           "r_unknown": (sl >= entry) if side_of(pos) == "BUY" else (sl <= entry)}
+        self.journal.setdefault(pid, {"module": module})
 
     # ------------------------------------------------------------ modulet M5
     def m5_tick(self, now, positions):
@@ -754,13 +808,16 @@ class GoldSniper:
         if plan is None:
             # pozicion nga para rinisjes: rreziku = distanca e SL (nese ende ne humbje)
             risk = entry - sl if buy else sl - entry
-            if risk <= 0:
+            unknown = risk <= 0     # SL tashme ne fitim: rreziku fillestar s'dihet
+            if unknown:
                 risk = abs(entry - sl) or c.min_sl
             plan = self.plans[pid] = {"sl": sl, "tp": None, "risk": risk, "best": entry, "ok": True,
                                       "side": "BUY" if buy else "SELL", "entry": entry,
                                       "lots": (find_key(pos, "volume") or 0) / (c.lot_size * 100),
                                       "bal_open": self.last_balance, "opened": int(time.time() * 1000),
-                                      "locked_r": 0, "symbol": self.mkt.name, "lot_size": c.lot_size}
+                                      "locked_r": 0, "symbol": self.mkt.name, "lot_size": c.lot_size,
+                                      "module": "main", "r_unknown": unknown}
+            self.journal.setdefault(pid, {"module": "main"})
         bid, ask = self.spot()
         price = bid if buy else ask
         plan["best"] = max(plan["best"], price) if buy else min(plan["best"], price)
@@ -814,52 +871,66 @@ class GoldSniper:
 
     # ------------------------------------------------------------ njoftime
     def check_closed(self, positions):
-        """Pozicionet e botit qe s'jane me te hapura -> njofto rezultatin."""
+        """Pozicionet e botit qe s'jane me te hapura -> njofto rezultatin me cmimin e sakte te mbylljes.
+        cTrader e shton deal-in e mbylljes me vonese: boti pret deri 10 minuta para se ta vleresoje."""
         open_ids = {find_key(p, "positionId") for p in positions}
+        now = int(time.time() * 1000)
         for pid in [q for q in self.plans if q not in open_ids]:
-            plan = self.plans.pop(pid)
+            self.pending[pid] = [self.plans.pop(pid), now]
             self.my_position_ids.discard(pid)
+        for pid, (plan, since) in list(self.pending.items()):
             try:
-                self.report_close(pid, plan)
+                px, exact = self.exit_price(pid, plan)
+                if not exact and now - since < 600_000:
+                    continue
+                del self.pending[pid]
+                self.report_close(pid, plan, px, exact)
             except Exception as e:
                 log.warning("Raporti i mbylljes per %s: %s", pid, e)
+                if now - since >= 600_000:
+                    self.pending.pop(pid, None)
 
     def exit_price(self, pid, plan):
-        """Cmimi i mbylljes nga deal-et e pozicionit; perndryshe SL/TP i fundit."""
+        """Cmimi i mbylljes nga deal-et e pozicionit; perndryshe SL/TP i fundit (exact=False)."""
         opp = "SELL" if plan.get("side") == "BUY" else "BUY"
-        deals = []
+
+        def closing(deals):
+            return [x for x in deals if x.get("positionId", pid) == pid and x.get("executionPrice")
+                    and str(x.get("tradeSide", "")).upper() == opp and x.get("dealStatus", "FILLED") == "FILLED"]
+        found = []
         try:
-            d = self.client.call("get_position_details", {"positionId": pid})
-            deals = find_key(d, "deals") or []
+            found = closing(find_key(self.client.call("get_position_details", {"positionId": pid}), "deals") or [])
         except McpError:
             pass
-        if not deals:
+        if not found:
             try:
                 now = int(time.time() * 1000)
-                d = self.client.call("get_deals", {"fromTimestamp": str(plan.get("opened", now) - 3_600_000),
-                                                   "toTimestamp": str(now), "maxRows": 200})
-                deals = [x for x in d.get("deals", []) if x.get("positionId") == pid]
+                d = self.client.call("get_deals", {"fromTimestamp": str(now - 7 * 86_400_000),
+                                                   "toTimestamp": str(now + 60_000), "maxRows": 1000})
+                found = closing(d.get("deals", []))
             except McpError:
                 pass
-        closing = [x for x in deals if str(x.get("tradeSide", "")).upper() == opp and x.get("executionPrice")]
-        if closing:
-            last = max(closing, key=lambda x: x.get("executionTimestamp", 0))
+        if found:
+            last = max(found, key=lambda x: x.get("executionTimestamp", 0))
             return to_price(last["executionPrice"]), True
         return (plan.get("tp") or plan.get("sl")), False
 
-    def report_close(self, pid, plan):
-        px, exact = self.exit_price(pid, plan)
+    def report_close(self, pid, plan, px, exact):
         entry, risk, buy = plan.get("entry"), plan.get("risk") or 1, plan.get("side") == "BUY"
         r = ((px - entry) if buy else (entry - px)) / risk if px and entry else 0.0
-        self.journal.setdefault(pid, {}).update(module=plan.get("module") or "main", r=r)
+        # pas rinisjes me SL ne fitim rreziku fillestar s'dihet: R s'llogaritet
+        r_ok = not plan.get("r_unknown")
+        self.journal.setdefault(pid, {}).update(module=plan.get("module") or "main", r=r if r_ok else None)
         bal, eq = self.balance()
         self.last_balance, self.last_equity = bal, eq
         # fitimi nga cmimet e ketij pozicioni (ndryshimi i balances perzihet kur mbyllen disa pozicione njeheresh)
         lot_size = plan.get("lot_size") or self.markets.get(plan.get("symbol_id"), self.gold).lot_size
         pnl = ((px - entry) if buy else (entry - px)) * plan.get("lots", 0) * lot_size * self.usd_to_deposit \
             if px and entry else None
+        if not r_ok:
+            r = (pnl or 0) / 100     # vetem per ikonen
         self.day_stats["closed"] += 1
-        self.day_stats["r"] += r
+        self.day_stats["r"] += r if r_ok else 0
         self.day_stats["wins"] += r > 0.05
         if pnl is not None:
             self.day_stats["pnl"] += pnl
@@ -867,7 +938,8 @@ class GoldSniper:
         hours = (time.time() * 1000 - plan.get("opened", time.time() * 1000)) / 3_600_000
         self.tg.send(
             f"{icon} U mbyll {plan.get('side', '')} {plan.get('symbol', '')} {plan.get('lots', 0):.2f} lot\n"
-            f"Hyrja {entry:.2f} -> dalja {px:.2f}{'' if exact else ' (afersisht)'} | {r:+.1f}R | {hours:.1f} ore\n"
+            f"Hyrja {entry:.2f} -> dalja {px:.2f}{'' if exact else ' (afersisht)'} | "
+            + (f"{r:+.1f}R | {hours:.1f} ore\n" if r_ok else "R ? (hapur para rinisjes)\n")
             + (f"Fitimi: {pnl:+,.2f} {self.deposit_asset} (pa komision)\n" if pnl is not None else "")
             + f"Balanca: {bal:,.2f} {self.deposit_asset}")
         log.info("Pozicioni %s u mbyll @ %.2f | %+.1fR | %s", pid, px or 0, r,

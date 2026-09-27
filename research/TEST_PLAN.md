@@ -8,8 +8,8 @@ mjafton që çdokush (edhe një bisedë e re me Claude) ta vazhdojë analizën.
 - Boti dërgon në Telegram **📒 raportin javor**: e premte 22:50 (XAUUSD) dhe e diel 22:50 (BTCUSD),
   ora e Kosovës/Shqipërisë. Pronari i kopjon në Notes dhe i ngjit në fund të testit.
 - Çdo raport ka trade-t, rezultatin në R dhe EUR, dhe **ndarjen sipas modulit**. Fitimi në EUR vjen nga
-  deal-et e cTrader-it, pra është i saktë edhe pas rinisjeve. Nëse boti riniset gjatë javës, moduli i
-  trade-ve të mbyllura para rinisjes del "i panjohur".
+  deal-et e cTrader-it, pra është i saktë edhe pas rinisjeve. Moduli dhe R-ja ruhen te `/data/state.json`
+  (volume në Railway); pa volume, pas një deploy-i gjatë javës moduli i trade-ve të mëparshme del "i panjohur".
 - Burimi zyrtar për çdo mosmarrëveshje: cTrader → History / Statement.
 - Railway: trial deri më 22 tetor ose deri sa mbarojnë kreditet ($4.77 më 27 shtator). Për javën e 4-t
   duhet plani Hobby, përndryshe testi ka ~3.5 javë.

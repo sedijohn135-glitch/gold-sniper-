@@ -253,15 +253,19 @@ Boti të shkruan në Telegram, që s'ke nevojë të hapësh Railway:
 | 🎯 BUY / SELL | hapet një trade (çmimi, SL, TP ose trailing, tipi i ditës ose nivelet e konfluencës) |
 | 🔒 SL në hyrje | trade-i s'mund të humbasë më |
 | 📈 Fitim i siguruar +XR | SL-ja ngjitet çdo +2R |
-| ✅ / ❌ U mbyll | rezultati në R dhe në EUR, balanca e re |
+| ✅ / ❌ U mbyll | rezultati në R dhe në EUR, balanca e re (çmimi i mbylljes merret nga deal-i i cTrader-it; boti e pret deri 10 min) |
 | 📊 Përmbledhja e ditës | në fund të çdo dite me trade |
 | 📒 Raporti javor XAUUSD | **e premte 22:50** (ora e Kosovës/Shqipërisë): trade-t e javës, sipas modulit, në R dhe EUR |
-| 📒 Raporti i fundjavës BTCUSD | **e diel 22:50**: njësoj për BTC (pozicionet që mbyllen në 23:00 shfaqen si "ende hapur") |
+| 📒 Raporti i fundjavës BTCUSD | **e diel 22:50**: njësoj për BTC |
+
+Raporti dërgohet **pasi të jenë mbyllur dhe raportuar** trade-t e atij tregu (nëse cTrader-i e vonon mbylljen,
+raporti pret deri në 23:55; pozicionet ende të hapura atëherë shfaqen si "ende hapur").
 | ⚠️ / 🛑 | cTrader s'përgjigjet > 5 min, SL s'u vendos, u arrit humbja max ditore |
 
 Shkruaji botit **/status** në Telegram: të tregon balancën, pozicionin e hapur dhe tipin e ditës.
 **/raport** të dërgon raportin e javës deri në atë moment. Fitimi në raport merret nga cTrader-i, pra është i saktë
-edhe pas një rinisjeje; moduli i trade-ve të mbyllura para një rinisjeje shfaqet si "i panjohur".
+edhe pas një rinisjeje. Moduli i çdo trade-i ruhet te skedari i gjendjes (shiko më poshtë); pa volume në
+Railway, moduli i trade-ve të mbyllura para një deploy-i shfaqet si "i panjohur".
 Komandat vetëm lexojnë; nga Telegram-i nuk mund të hapet ose mbyllet asnjë trade,
 dhe boti u përgjigjet vetëm mesazheve nga chat-i yt.
 
@@ -280,7 +284,14 @@ Vendosja:
 cTrader nuk e kthen label-in e pozicioneve, prandaj boti i konsideron të vetat **të gjitha pozicionet
 në XAUUSD dhe BTCUSD** (llogaria është vetëm për botin: mos hap trade me dorë në këto simbole).
 Pas një rinisjeje në Railway i gjen vetë: pozicionet pa TP i menaxhon si sniper (break-even, trailing),
-ato me TP i lë me SL/TP fikse. Të gjitha mbyllen në kufirin e tregut (e premte 19:00 / e diel 21:00 UTC).
+ato me TP i lë me SL/TP fikse. Të gjitha mbyllen në kufirin e tregut (e premte 19:00 / e diel 20:00 UTC).
+
+**Skedari i gjendjes.** Boti ruan planet e pozicioneve (moduli, rreziku, SL-ja) dhe ditarin e trade-ve
+te `state.json` (ose `/data/state.json` kur ekziston dosja `/data`, ose te `STATE_FILE`). Pas një rinisjeje
+e di saktë modulin dhe R-në e çdo trade-i, dhe raporton edhe mbylljet që ndodhën ndërkohë.
+Në Railway skedarët humbin me çdo deploy, përveç se në një **volume**. Për ta mbajtur:
+service-i → **Settings → Volumes → New Volume** (ose klik i djathtë te service → Attach volume),
+mount path **`/data`**. Kushton pak (~0.25$/GB në muaj; skedari është disa KB).
 
 ### Trade-i i parë
 

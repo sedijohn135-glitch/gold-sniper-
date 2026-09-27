@@ -35,6 +35,12 @@ def due(now_utc, sent):
     return None
 
 
+def price(v):
+    """Cmimi here si 4290.5 e here si 429050000 (1/100000)."""
+    v = float(v)
+    return v / 100000 if v > 1_000_000 else v
+
+
 def closed_positions(deals, symbol_id, units_scale=100):
     """Pozicionet e mbyllura nga deal-et: (pid, ana, hyrja, dalja, njesite, t_hapje, t_mbyllje, komisioni)."""
     by = defaultdict(list)
@@ -50,7 +56,7 @@ def closed_positions(deals, symbol_id, units_scale=100):
         if o.get("tradeSide") == c.get("tradeSide"):
             continue
         vol = min(o.get("filledVolume") or o.get("volume") or 0, c.get("filledVolume") or c.get("volume") or 0)
-        out.append(dict(pid=pid, side=o["tradeSide"], entry=float(o["executionPrice"]), exit=float(c["executionPrice"]),
+        out.append(dict(pid=pid, side=o["tradeSide"], entry=price(o["executionPrice"]), exit=price(c["executionPrice"]),
                         units=vol / units_scale, opened=o.get("executionTimestamp", 0),
                         closed=c.get("executionTimestamp", 0),
                         commission=sum(x.get("commission", 0) or 0 for x in ds)))
