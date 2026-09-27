@@ -118,6 +118,7 @@ class GoldSniper:
         self.calendar = news.Calendar()
         self.journal = {}        # positionId -> {"module", "r"} per raportin javor
         self.reports_sent = set()
+        self.close_notified = {}   # data -> {"gold", "btc"}: njoftimi i mbylljes u dergua
         self.conf_base = conf.ConfParams(min_conf=cfg.conf_min_levels, min_rr=cfg.conf_rr)
         self.hier_base = hier.P(min_rr=cfg.hier_rr, min_sl=cfg.hier_min_sl)
         self.conf_params, self.hier_params = self.conf_base, self.hier_base
@@ -356,10 +357,12 @@ class GoldSniper:
             log.info("Mbyllja e tregut (%s): mbyllen %d pozicione", "/".join(sorted(kinds)), len(closing))
             for p in closing:
                 self.close(find_key(p, "positionId"), p)
-            if "gold" in kinds:
-                self.tg.send("🔔 E premte mbremje: pozicionet e arit u mbyllen para fundjaves.")
-            if "btc" in kinds:
-                self.tg.send("🔔 E diel mbremje: pozicionet BTC u mbyllen. Te henen boti kthehet te ari.")
+            # njoftim nje here per cdo mbyllje tregu; nese cTrader refuzon (tregu i mbyllur),
+            # boti provon perseri ne heshtje ne cdo tick
+            for kd in kinds - self.close_notified.get(now_dt.date(), set()):
+                self.close_notified.setdefault(now_dt.date(), set()).add(kd)
+                self.tg.send("🔔 E premte mbremje: pozicionet e arit po mbyllen para fundjaves." if kd == "gold" else
+                             "🔔 E diel mbremje: pozicionet BTC po mbyllen. Te henen boti kthehet te ari.")
             positions = self.my_positions()
             self.check_closed(positions)
         want = self.market_at(now_dt)

@@ -224,8 +224,8 @@ pa 3 më të mirat rezultati është afër zeros. Për ta fikur: `NEWS=false`.
 
 Ari është i mbyllur në fundjavë, prandaj boti kalon vetë te **BTCUSD**:
 
-- **E shtunë 00:00 UTC → e diel 21:00 UTC** tregton BTCUSD me të njëjtat tre module.
-- **E diel 21:00 UTC** mbyll pozicionet BTC; **të hënën** kthehet te XAUUSD si gjithmonë.
+- **E shtunë 00:00 UTC → e diel 20:00 UTC** tregton BTCUSD me të njëjtat module.
+- **E diel 20:00 UTC** (22:00 ora jote) mbyll pozicionet BTC, para pushimit të BTC-së te IC Markets rreth 21:00 UTC; **të hënën** kthehet te XAUUSD si gjithmonë.
 - Loti i kriptos është ndryshe: 1 lot = 1 BTC (`volume 100`), ndërsa 1 lot ari = 100 oz (`volume 10000`).
   Boti e llogarit vetë sipas simbolit.
 - BTC lëviz ~20 herë më shumë se ari në ditë, prandaj të gjitha vlerat në $ shumëzohen me 20
@@ -345,7 +345,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |
 | `BTC_MAX_LOTS` | si `MAX_LOTS` | loti maksimal për BTC (1 lot = 1 BTC) |
 | `BTC_SCALE` | `20` | vlerat në $ të arit × kaq për BTC |
-| `BTC_CLOSE_SUNDAY_UTC` | `21` | ora e së dielës (UTC) kur mbyllen pozicionet BTC |
+| `BTC_CLOSE_SUNDAY_UTC` | `20` | ora e së dielës (UTC) kur mbyllen pozicionet BTC |
 
 Llogaria jote demo ka balancë shumë të madhe, prandaj me 0.5% rrezik loti del gjithmonë
 te kufiri `MAX_LOTS`. Rregulloje `MAX_LOTS` ose përdor `FIXED_LOTS` sipas dëshirës.

@@ -19,7 +19,7 @@ class Market:
     start_h: int = 1             # ari: orari i hyrjeve (UTC)
     end_h: int = 20
     close_friday_utc: int = 19   # ari: e premte mbremje mbyllet gjithcka
-    close_sunday_utc: int = 21   # btc: e diel mbremje mbyllet gjithcka (para hapjes se arit)
+    close_sunday_utc: int = 20   # btc: e diel mbremje mbyllet gjithcka (IC Markets ndal BTC ~21:00 UTC)
 
     def in_window(self, dt) -> bool:
         """A eshte ky tregu i botit ne kete kohe (pa marre parasysh oret e hyrjes)."""

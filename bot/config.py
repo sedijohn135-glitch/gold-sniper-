@@ -59,7 +59,7 @@ class Config:
     btc_scale: float = 20.0       # vlerat ne $ te arit x kaq per BTC (levizja ditore ~20 x me e madhe)
     btc_risk_percent: float = 0.25
     btc_max_lots: float = 1.0
-    btc_close_sunday_utc: int = 21
+    btc_close_sunday_utc: int = 20   # IC Markets ndal BTC rreth 21:00 UTC te dielen
     close_friday_utc: int = 19    # te premten ne kete ore UTC mbyll gjithcka, pa trade te reja deri te henen (-1 = joaktiv)
     rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
@@ -153,7 +153,7 @@ class Config:
             btc_scale=_f("BTC_SCALE", 20.0),
             btc_risk_percent=_f("BTC_RISK_PERCENT", 0.25),
             btc_max_lots=_f("BTC_MAX_LOTS", _f("MAX_LOTS", 1.0)),
-            btc_close_sunday_utc=_i("BTC_CLOSE_SUNDAY_UTC", 21),
+            btc_close_sunday_utc=_i("BTC_CLOSE_SUNDAY_UTC", 20),
             rot_tp_adr=_f("ROT_TP_ADR", 0.3),
             max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),
