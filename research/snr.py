@@ -171,6 +171,11 @@ def trade(m5, cands, rr, spread, min_sl, t0=0):
         buy = c["side"] == "BUY"
         tp = c["entry_c"] + rr * risk if buy else c["entry_c"] - rr * risk
         cc = dict(c, sl=c["entry_c"] - risk if buy else c["entry_c"] + risk)
+        b = m5[c["i"]]
+        if c.get("mode") == "limit" and ((buy and b.l <= cc["sl"]) or (not buy and b.h + spread >= cc["sl"])):
+            T.append(dict(t=c["t"], r=-1.0))      # limiti u mbush dhe SL u godit ne te njejtin qiri
+            free = c["i"]
+            continue
         r, j = outcome(m5, cc, tp, min_sl=min_sl, spread=spread)
         T.append(dict(t=c["t"], r=r))
         free = j

@@ -114,7 +114,7 @@ def candidates(m5):
                 sweep = bool(prev) and ((b.l < min(x.l for x in prev) < b.c) if buy else
                                         (b.h > max(x.h for x in prev) > b.c))
                 past = m5[max(0, k - 48):k - 6]
-                aod = False
+                aod, pk = False, None
                 if past and ao[k] == ao[k]:
                     m = min(range(len(past)), key=lambda q: past[q].l) if buy else \
                         max(range(len(past)), key=lambda q: past[q].h)
@@ -125,7 +125,15 @@ def candidates(m5):
                             young=b.t - z.known < 86_400_000)
                 del base["z"]
                 ent = z.hi if buy else z.lo
-                C.append(dict(base, mode="limit", i=k, t=b.t, entry_c=ent,
+                # limit: urdhri mbushet brenda qirit, prandaj vetem te dhena para tij (pa look-ahead):
+                # sweep = zona ndodhet pertej ekstremit te 4 oreve (per ta prekur, cmimi e kap);
+                # ao = hyrja pertej ekstremit te 4 oreve, AO e qirit te meparshem me e larte (buy)
+                lim = dict(base, sweep=bool(prev) and ((min(x.l for x in prev) > ent) if buy else
+                                                         (max(x.h for x in prev) < ent)), ao=False)
+                if pk is not None and ao[k - 1] == ao[k - 1] and ao[pk] == ao[pk]:
+                    lim["ao"] = (ent < past[m].l and ao[k - 1] > ao[pk]) if buy else \
+                        (ent > past[m].h and ao[k - 1] < ao[pk])
+                C.append(dict(lim, mode="limit", i=k, t=b.t, entry_c=ent,
                               sl=z.lo - 0.1 * a if buy else z.hi + 0.1 * a))
             ext = min(ext, b.l) if buy else max(ext, b.h)
             if (buy and b.c < z.lo) or (not buy and b.c > z.hi) or k > touch + 12:
@@ -159,7 +167,13 @@ def results(m5, C, k, t0, t1):
         for rr in (2, 3):
             tp = c["entry_c"] + rr * risk if buy else c["entry_c"] - rr * risk
             for cost in COSTS:
-                r, j = outcome(m5, cc, tp, min_sl=3 * k, spread=cost * k)
+                b = m5[c["i"]]
+                sp = cost * k
+                if c["mode"] == "limit" and ((buy and b.l <= cc["sl"]) or (not buy and b.h + sp >= cc["sl"])):
+                    # limiti u mbush dhe SL u godit ne te njejtin qiri
+                    rs[(rr, cost)] = (-1.0, b.t + M5)
+                    continue
+                r, j = outcome(m5, cc, tp, min_sl=3 * k, spread=sp)
                 rs[(rr, cost)] = (r, m5[j].t if j < len(m5) else 2**62)
         sig = sum(1 << q for q, f in enumerate(FEATS) if c[f])
         out.append((c["mode"], sig, c["t"], rs))
