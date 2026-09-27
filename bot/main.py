@@ -285,8 +285,14 @@ class GoldSniper:
         m = next((m for m in ("conf", "hier", "news") if self.labels[m] in tags), None)
         if m:
             return m
-        # pozicion nga para rinisjes pa label: me TP -> SL/TP fikse ("old"), pa TP -> sniper me trailing
-        return "old" if to_price(find_key(pos, "takeProfit")) else "main"
+        # pozicion nga para rinisjes pa label: pa TP -> sniper me trailing; TP = rot_tp_adr x ADR nga hyrja
+        # -> sniper ne dite rotacioni (break-even/trailing); tjeter TP -> SL/TP fikse ("old")
+        tp = to_price(find_key(pos, "takeProfit"))
+        if not tp:
+            return "main"
+        entry = to_price(find_key(pos, "price", "entryPrice", "openPrice")) or 0
+        rot = self.cfg.rot_tp_adr * (self.adr or 0)
+        return "main" if rot and abs(abs(tp - entry) - rot) <= 0.05 * rot else "old"
 
     # ------------------------------------------------------------ loop
     def run(self):
@@ -605,6 +611,8 @@ class GoldSniper:
                 continue
             if self.market_of(pos) is not self.mkt:
                 continue          # pozicion i tregut tjeter: mbrohet vetem me SL/TP (mbyllet ne kufi)
+            if plan is None and self.adr is None:
+                continue          # pas rinisjes: prit ADR-ne (tick-u i ardhshem) per te njohur modulin
             module = self.module_of(pos)
             if module not in ("main", "news"):
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
