@@ -25,7 +25,7 @@ from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .markets import Market
 from .mcp_client import PRICE_SCALE, McpClient, McpError
-from .strategy import detect, prepare
+from .strategy import adr_pct, detect, prepare
 from .telegram import Telegram
 
 log = logging.getLogger("gold-sniper")
@@ -105,6 +105,8 @@ class GoldSniper:
         self.my_position_ids = set()
         self.plans = {}  # positionId -> {"sl", "tp" (None me trailing), "risk", "best"}
         self.adr = None  # ADR e fundit (per trailing stop)
+        self.adr_pct = None      # ADR e arit ne % te cmimit (filtri i tregut te qete)
+        self.calm_state = None   # True kur ari eshte i qete dhe modulet pushojne
         self.day_kind = ""  # tipi i dites tani: "UP"/"DOWN"/"ROT"/""
         self.last_signal = None
         self.started = utc()
@@ -449,6 +451,7 @@ class GoldSniper:
             self.adr = ind["adr"][-1]
         if "day" in ind:
             self.day_kind = ind["day"][-1]
+        self.update_calm(bars)
         if self.last_bar_t is None:
             self.last_bar_t = newest.t
             log.info("Boti filloi. Qiri i fundit i mbyllur: %s", utc(newest.t))
@@ -459,6 +462,29 @@ class GoldSniper:
         self.on_bar(bars, positions, ind)
 
     # ------------------------------------------------------------ signals
+    def calm(self):
+        """Ari i qete (ADR < min_adr_pct % e cmimit): sniper, konfluenca dhe hierarkia s'hapin trade."""
+        return bool(self.mkt and self.mkt.kind == "gold" and self.cfg.min_adr_pct > 0 and
+                    self.adr_pct is not None and self.adr_pct < self.cfg.min_adr_pct)
+
+    def update_calm(self, bars):
+        if not (self.mkt and self.mkt.kind == "gold"):
+            return                # BTC: pa filter; gjendja e arit mbetet per te henen
+        self.adr_pct = adr_pct(bars)
+        state = self.calm()
+        if self.calm_state is not None and state != self.calm_state or self.calm_state is None and state:
+            if state:
+                self.tg.send(f"🌙 Ari eshte i qete: ADR {self.adr_pct:.2f}% e cmimit < {self.cfg.min_adr_pct}%. "
+                             f"Sniper, konfluenca dhe hierarkia pushojne (ne 10 vjet backtest keto dite ishin me humbje). "
+                             f"Pozicionet e hapura menaxhohen si zakonisht.")
+            else:
+                self.tg.send(f"☀️ Ari leviz perseri: ADR {self.adr_pct:.2f}% >= {self.cfg.min_adr_pct}%. "
+                             f"Modulet rifillojne.")
+        if state != self.calm_state:
+            log.info("Filtri i tregut te qete: ADR %s%% -> %s", f"{self.adr_pct:.2f}" if self.adr_pct else "?",
+                     "PUSHIM" if state else "aktiv")
+        self.calm_state = state
+
     def on_bar(self, bars, positions, ind):
         c = self.cfg
         i = len(bars) - 1
@@ -489,6 +515,8 @@ class GoldSniper:
             return log.info("  injoruar: pritje pas trade-it te fundit")
         if not self.mkt.can_open(datetime.now(timezone.utc)):
             return log.info("  injoruar: jashte orarit te %s (%d UTC)", self.mkt.name, hour)
+        if self.calm():
+            return log.info("  injoruar: ari i qete (ADR %.2f%% < %.1f%%)", self.adr_pct, c.min_adr_pct)
 
         soon = self.calendar.upcoming(int(time.time() * 1000), 30) if c.news_on and self.mkt.kind == "gold" else None
         if soon:
@@ -779,6 +807,8 @@ class GoldSniper:
             return log.info("  injoruar: u arrit humbja max ditore")
         if any(self.module_of(q) == module for q in positions):
             return log.info("  injoruar: moduli ka pozicion te hapur")
+        if module in ("conf", "hier") and self.calm():
+            return log.info("  injoruar: ari i qete (ADR %.2f%% < %.1f%%)", self.adr_pct, c.min_adr_pct)
         if not self.mkt.can_open(datetime.fromtimestamp(now / 1000, timezone.utc)):
             return log.info("  injoruar: jashte orarit te %s", self.mkt.name)
         bid, ask = self.spot()
@@ -987,7 +1017,9 @@ class GoldSniper:
             lines.append(f"Balanca: {self.last_balance:,.2f} {self.deposit_asset} | "
                          f"Equity: {self.last_equity:,.2f}")
         lines.append(f"Dita: {DAY_NAMES.get(self.day_kind, 'e paqarte')}"
-                     + (f" | ADR {self.adr:.0f}$" if self.adr else ""))
+                     + (f" | ADR {self.adr:.0f}$" if self.adr else "")
+                     + (f" ({self.adr_pct:.2f}% e cmimit{', ari i qete: modulet pushojne' if self.calm() else ''})"
+                        if self.adr_pct and self.mkt and self.mkt.kind == "gold" else ""))
         lines.append(f"Sot: {self.day_stats['opened']} trade, {self.day_stats['r']:+.1f}R"
                      + (" | 🛑 limiti ditor u arrit" if self.daily_limit_hit else ""))
         lines.append("Pozicione: " + ("; ".join(self.open_summary) if self.open_summary else "asnje"))

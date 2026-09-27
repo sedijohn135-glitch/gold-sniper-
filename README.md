@@ -176,6 +176,26 @@ prandaj duhen javë të tëra për ta gjykuar. Për ta fikur: `HIERARCHY=false`.
 
 Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca, hierarkia).
 
+### Testi 10-vjeçar dhe filtri i arit të qetë
+
+Modulet u testuan edhe në 10 vjet ar (2016–2025, HistData M1, `research/tenyear.py`), me vlerat në $
+të shkallëzuara sipas çmimit të çdo viti dhe spread 0.20$:
+
+| Moduli | 8 muaj 2026 | 10 vjet, të gjitha ditët | 10 vjet, vetëm ADR ≥ 1.6% e çmimit |
+|---|---|---|---|
+| Sniper | +150R | −375R | +27R |
+| Hierarkia | +122R | −144R | +79R (pozitiv në 2016–20 dhe në 2021–25) |
+| Konfluenca | +23R | −6R | +56R (pozitiv në 2016–20 dhe në 2021–25) |
+
+Modulet fitojnë kur ari lëviz shumë (si në 2026, ku ADR ishte gjithmonë ≥ 1.76% e çmimit) dhe humbin
+kur ari është i qetë. Prandaj **kur ADR e 10 ditëve bie nën 1.6% të çmimit, sniper-i, konfluenca dhe
+hierarkia s'hapin trade** (njoftim 🌙 në Telegram; ☀️ kur rifillojnë). Pozicionet e hapura menaxhohen
+si zakonisht; lajmi dhe BTC-ja s'preken. Pragu: `MIN_ADR_PCT` (0 = pa filter). Pragu u zgjodh pasi u
+panë rezultatet (`research/regime.py`), prandaj testi live mbetet gjykatësi.
+
+U testuan në 10 vjet edhe setup-et SNR breakout + retest, RBR/DBD me SNR në të majtë, supply/demand
+bazike dhe 4,096 kombinime konfluencash (`research/snr.py`, `research/combos.py`): asnjë s'doli më i mirë.
+
 ## Vendosja në Railway (nga telefoni)
 
 1. Hap **railway.com** → *Login with GitHub*.
@@ -353,6 +373,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
+| `MIN_ADR_PCT` | `1.6` | ari i qetë: nën këtë ADR (% e çmimit) sniper/konfluenca/hierarkia s'hapin trade; `0` = pa filter |
 | `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |
 | `BTC_MAX_LOTS` | si `MAX_LOTS` | loti maksimal për BTC (1 lot = 1 BTC) |

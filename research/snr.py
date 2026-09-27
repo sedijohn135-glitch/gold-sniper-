@@ -79,7 +79,7 @@ def snr_breakout(m5, h1, atr, sw, times):
     return out
 
 
-def base_zones(h1, atr, sw, tf_ms=H1):
+def base_zones(h1, atr, sw, tf_ms=H1, lin=0.6, lbase=0.7, lout=0.8):
     """Zonat baze (H1 ose M15): (tipi, D/S, lo, hi, koha kur njihet, snr ne te majte, atr).
     Kembe hyrese: qiri me trup >= 0.6 ATR ose 3 qirinj me levizje neto >= 1 ATR."""
     sw_by_i = sorted((i, p) for _, i, _, p in sw)
@@ -91,21 +91,21 @@ def base_zones(h1, atr, sw, tf_ms=H1):
             continue
         leg_in = h1[j - 1]
         din = leg_in.c - leg_in.o
-        if abs(din) < 0.6 * a:
+        if abs(din) < lin * a:
             din = h1[j - 1].c - h1[j - 3].o
             if abs(din) < 1.0 * a:
                 continue
         for n in (1, 2, 3):
             base = h1[j:j + n]
-            if any(b.h - b.l > 0.7 * a for b in base) or j + n >= len(h1):
+            if any(b.h - b.l > lbase * a for b in base) or j + n >= len(h1):
                 continue
             lo, hi = min(b.l for b in base), max(b.h for b in base)
             out_b = h1[j + n]
             dout = out_b.c - out_b.o
-            if dout >= 0.8 * a and out_b.c > hi:
+            if dout >= lout * a and out_b.c > hi:
                 kind, z = ("RBR" if din > 0 else "DBR"), "D"
                 hi = max(max(b.o, b.c) for b in base)
-            elif dout <= -0.8 * a and out_b.c < lo:
+            elif dout <= -lout * a and out_b.c < lo:
                 kind, z = ("DBD" if din < 0 else "RBD"), "S"
                 lo = min(min(b.o, b.c) for b in base)
             else:

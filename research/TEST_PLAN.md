@@ -30,6 +30,13 @@ konfluenca +3.6R në 8 muaj, të gjitha negative qershor–shtator). Vlerësohet
 Fitimi vjen nga pak trade të mëdha: 1 në 4–5 trade fiton, shumica dalin −1R ose në break-even.
 Një javë e keqe (deri −13R te sniper-i) është normale edhe në backtest.
 
+## Testi 10-vjeçar (shtuar 28 shtator 2026)
+
+Në 10 vjet ar (2016–2025) modulet humbin kur ari është i qetë dhe fitojnë kur lëviz shumë (`research/regime.py`).
+Që nga 28 shtatori boti s'hap trade me sniper/konfluencë/hierarki kur ADR e 10 ditëve < 1.6% e çmimit
+(🌙 në Telegram). Në 2026 ADR ishte gjithmonë ≥ 1.76%, pra pritjet më poshtë mbeten të njëjta; në
+fund të shtatorit ADR ishte ~2.0% dhe po binte. Javët me 🌙 s'kanë trade: shënoji veç në raport.
+
 ## Si gjykohet pas 4 javësh (vetëm ari)
 
 1. **Të gjitha bashkë:** në backtest asnjë periudhë 4-javore s'ishte negative (më e keqja +6R).

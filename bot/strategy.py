@@ -185,6 +185,20 @@ def detect_classic(bars, i, p: Params, atr, rsi):
 SERVER_OFFSET_MS = 3 * 3600 * 1000  # dita e grafikut IC Markets = UTC+3
 
 
+def adr_pct(bars, days=10):
+    """ADR e `days` diteve te fundit te punes (dite UTC, pa sot) ne % te cmimit te fundit."""
+    rng = {}
+    for b in bars:
+        d = b.t // 86_400_000
+        h, l = rng.get(d, (b.h, b.l))
+        rng[d] = (max(h, b.h), min(l, b.l))
+    today = bars[-1].t // 86_400_000 if bars else 0
+    prev = [h - l for d, (h, l) in sorted(rng.items()) if d < today and (d + 3) % 7 < 5][-days:]
+    if len(prev) < 5:
+        return None
+    return sum(prev) / len(prev) / bars[-1].c * 100
+
+
 def adr_series(bars, days):
     """Per cdo qiri: mesatarja e range-it (high-low) te `days` diteve te meparshme."""
     out, ranges = [], []
