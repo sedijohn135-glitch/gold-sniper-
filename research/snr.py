@@ -245,7 +245,7 @@ if __name__ == "__main__":
 #   B H1 RBR/DBD (me/pa SNR majtas): -32R deri +10R, afer zeros. DBR/RBD njesoj.
 #   B M15 RBR/DBD rejection TP3R: +120.5R (0.090R/trade, 8/10 vite pozitive); +SNR majtas +111.5R, DD 26.6R.
 #     Me kosto 0.66: -64.9R / -48.7R. Avantazhi eshte me i vogel se kostoja e plote.
-#   C M15 S/D bazike limit TP3R: 11701 trade +489.8R (0.042R/trade) | kosto 0.66: -639.2R.
-#     Ne 2026 (8 muaj, cTrader): +94.1R. Pozitive vetem me nje pozicion njeheresh: te gjitha prekjet
-#     e pavarura dalin negative. Shume e ndjeshme ndaj kostos.
+#   C M15 S/D bazike limit TP3R: 11825 trade +65.2R (0.006R/trade = zero) | kosto 0.66: -1084.5R.
+#     (Versioni i pare jepte +489.8R nga nje gabim: SL i goditur ne qirin e mbushjes s'numerohej.)
+#     Ne 2026 (8 muaj, cTrader): +55.2R. Pa avantazh ne 10 vjet.
 #   C H1 S/D bazike, rejection M15 bazike: negative.

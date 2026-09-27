@@ -249,3 +249,12 @@ if __name__ == "__main__":
                 d = combo(dev, 1 << q)
                 v = combo(tabs["VAL"][key], 1 << q)
                 print(f"  vetem {f:7}: DEV {d[0]:5} tr {d[1] / max(d[0], 1):+.3f}R | VAL {v[0]:5} tr {v[1] / max(v[0], 1):+.3f}R")
+
+# Rezultati (DEV 2016-2020 per renditjen, VAL 2021-2025 dhe 2026 per kontroll, kosto 0.40$, nje pozicion):
+#   Pa kusht: limit -0.12/-0.14R per trade, rejection -0.13/-0.14R (DEV/VAL).
+#   Asnje konfluence e vetme s'e kthen ne pozitiv (me e mira: ao/sweep ~ -0.06R).
+#   Kombinimi me i mire ne DEV (limit TP2R h1+snr+htf+disc+sess+sweep): DEV +0.137R, VAL +0.051R,
+#   2026 -0.246R. Te 10 me te mirat e DEV bien ne ~0 ose negativ ne VAL dhe 2026: me 4096 kombinime
+#   disa dalin pozitive vetem nga rastesia. Rejection: me i miri DEV +0.178R -> VAL -0.175R.
+#   Versioni i pare i ketij testi kishte look-ahead (sweep/AO nga mbyllja e qirit te mbushjes se limitit,
+#   SL ne te njejtin qiri i pa numeruar) dhe tregonte +0.5R per trade: i gabuar.
