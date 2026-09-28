@@ -14,7 +14,7 @@ BUY (SELL = pasqyra):
      e fundit), trendline H1 ne rritje (dy swing low) qe arrin ne zone tani, ADR >= 1.6% e cmimit.
 Pattern-i kerkohet ne H1, M30, M15, M5 dhe M1. Kosto 0.17$ / 0.30$ ne 4,500$ (shkallezuar me cmimin).
 
-    python -m research.flip_rbr <dosja HistData M1> <m1_2026.pkl>
+    python -m research.flip_rbr <dosja HistData M1> <m1_2026.pkl> [break]
 """
 import bisect
 import statistics
@@ -105,6 +105,43 @@ def patterns(B, tf_ms, stat=None):
             if found:
                 break
     return out
+
+
+def patterns_break(B, tf_ms, stat=None):
+    """Varianti 2 (shembulli 22 shtator): DBD me baze te gjate; zona = hija e qiririt te fundit bullish
+    te bazes [low, open]; thyerja paster lart (rally/RBR) -> hyrje ne kthimin e pare ne zone."""
+    a = atr_series(B, 14)
+    n = len(B)
+    out = []
+    for j in range(9, n - 5):
+        x = a[j]
+        if x != x or x <= 0:
+            continue
+        base = B[j]
+        if not base.c > base.o or base.h - base.l > 1.5 * x or base.o - base.l <= 0:
+            continue
+        # cmimi erdhi ne baze duke rene (maja e 8 qirinjve te fundit >= 1.5 ATR mbi low-in e bazes)
+        if max(B[q].h for q in range(j - 8, j)) - base.l < 1.5 * x:
+            continue
+        # renia dalese: brenda 4 qirinjve mbyllje nen low-in e bazes, >= 1 ATR nga mbyllja e bazes
+        lo_i = next((q for q in range(j + 1, j + 5) if B[q].c < base.l and base.c - B[q].c >= 1.0 * x), None)
+        if lo_i is None:
+            continue
+        m = None
+        for q in range(lo_i + 1, min(lo_i + 200, n)):
+            b = B[q]
+            if b.c > base.h:
+                rng = b.h - b.l
+                if rng > 0 and b.c > b.o and (b.c - b.o) >= 0.5 * rng:
+                    m = q
+                break
+        if m is not None:
+            out.append((B[m].t + tf_ms, base.l, base.o, x, base.t))
+    return out
+
+
+PATTERN = patterns
+SLS = {"baza": None}     # None: SL = low - max(0.2 ATR, 1$)
 
 
 def engulf_times(B, tf_ms):
@@ -228,13 +265,15 @@ def candidates(m1, k):
             ctx[ctf]["lk"] = [x[0] for x in ctx[ctf]["lines"]]
         for tf, mins in TFS.items():
             B = bars if mins == 1 else aggregate(bars, mins)
-            for known, zlo, zhi, x, tbase in patterns(B, mins * M1):
+            for known, zlo, zhi, x, tbase in PATTERN(B, mins * M1):
                 # cmimet reale: per SELL pasqyrohen mbrapsht
                 lvl = zhi if buy else -zhi                       # kufiri i hyrjes (open i qiririt baze)
                 far = zlo if buy else -zlo
-                sl = far - max(0.2 * x, 1.0 * k) if buy else far + max(0.2 * x, 1.0 * k)
                 s0 = bisect.bisect_left(t1, known)
-                for mode in ("limit", "rej"):
+                for slname, slk in SLS.items():
+                  buf = max(0.2 * x, 1.0 * k) if slk is None else (2.0 * k if slk == "2$" else slk * x)
+                  sl = far - buf if buy else far + buf
+                  for mode in ("limit", "rej"):
                     for cost in COSTS:
                         sp = cost * k
                         e = fill = None
@@ -302,7 +341,8 @@ def candidates(m1, k):
                                     ok = True
                                     break
                             f["snr_" + ctf] = ok
-                        out.append(dict(tf=tf, mode=mode, cost=cost, side=side, t=t, r=sim[0], exit=sim[1], **f))
+                        out.append(dict(tf=tf, mode=mode, cost=cost, side=side, t=t, r=sim[0], exit=sim[1], sl=slname,
+                                        **f))
     return out
 
 
@@ -371,8 +411,41 @@ def report(per, cost=0.17):
                 print(line, flush=True)
 
 
+def report_break(per, cost=0.17):
+    groups = {
+        "te gjitha": lambda c: True,
+        "engulfing H1": lambda c: c["eng_H1"],
+        "engulfing H4/H1/M30": lambda c: c["eng_H4"] or c["eng_H1"] or c["eng_M30"],
+        "ADR>=1.6%": lambda c: c["adr"],
+        "engulfing H1 + ADR": lambda c: c["eng_H1"] and c["adr"],
+        "TL + SNR >= 2 TF": lambda c: n_tl(c) >= 1 and n_snr(c) >= 2,
+    }
+    for slname in SLS:
+        for mode in ("limit", "rej"):
+            for tfs in (("M15",), ("M30", "H1"), ("M5",)):
+                print(f"\n=== {'+'.join(tfs)} | {mode} | {slname} | kosto {cost}$ | R per trade TP 2R/3R/4R")
+                for g, fn in groups.items():
+                    line = f"{g:20}"
+                    for lbl, ys in (("16-20", range(2016, 2021)), ("21-25", range(2021, 2026)), ("2026", (2026,))):
+                        tot = {rr: [0, 0.0] for rr in RRS}
+                        for tf in tfs:
+                            X = [c for y in ys for c in per[y] if c["tf"] == tf and c["mode"] == mode
+                                 and c["cost"] == cost and c["sl"] == slname and fn(c)]
+                            for rr in RRS:
+                                n, s_ = stats(X, rr)
+                                tot[rr][0] += n
+                                tot[rr][1] += s_
+                        line += f" | {lbl} {tot[2][0]:5} tr " + "/".join(
+                            f"{tot[rr][1] / max(tot[rr][0], 1):+.2f}" for rr in RRS)
+                    print(line, flush=True)
+
+
 if __name__ == "__main__":
     folder, p26 = sys.argv[1], sys.argv[2]
+    if len(sys.argv) > 3 and sys.argv[3] == "break":
+        PATTERN = patterns_break
+        SLS = {"SL 2$": "2$", "SL 0.5 ATR": 0.5, "SL 1 ATR": 1.0}
+        TFS = {"H1": 60, "M30": 30, "M15": 15, "M5": 5}
     per = {}
     for y in range(2016, 2026):
         m1 = load_year(folder, y)
@@ -382,7 +455,7 @@ if __name__ == "__main__":
     per[2026] = candidates(pickle.load(open(p26, "rb")), 1.0)
     print(2026, len(per[2026]), "hyrje", flush=True)
     pickle.dump(per, open("/tmp/flip_rbr.pkl", "wb"))
-    report(per)
+    report_break(per) if PATTERN is patterns_break else report(per)
 
 # Rezultati (HistData M1 2016-2025 + cTrader 2026, kosto 0.17$, nje pozicion per TF), R per trade TP 2R/3R/4R:
 #   Pattern-i i plote eshte i rralle: H1 ~2-3 ne vit, M30 ~4, M15 ~10, M5 ~50, M1 ~300.
@@ -402,3 +475,16 @@ if __name__ == "__main__":
 #   M5 rej:   TL+SNR>=2 TF -0.28|+0.33|-0.25 (~28 tr); M5 limit TL ne ndonje TF -0.27|-0.33|-0.40.
 #   H1+M30+M15: 4-24 trade per grup ne 5 vjet, rezultate qe ndryshojne shenje nga periudha ne periudhe.
 #   Me shume konfluenca s'jep rezultat me te mire: s'ka rritje te qendrueshme nga 0 -> 5+ konfluenca.
+#
+# VARIANTI 2 "break" (shembulli 22 shtator: engulfing H1 + DBD M15 me baze te gjate, zona = hija e qiririt
+# te fundit bullish, rally qe e thyen, hyrje ne kthimin e pare). Shembulli gjendet: zona 4315.09-4317.81,
+# hyrje 09:04 UTC; SL 2$ -> -1R (retest-i zbriti ne 4312.12), SL 0.5 ATR -> +2R, SL 1 ATR -> +4R.
+# 10 vjet, kosto 0.17$, R per trade TP 2R/3R/4R (2016-20 | 2021-25 | 2026), mijera trade per grup:
+#   M15 + engulfing H1, limit, SL 2$:      -0.04/-0.02/-0.03 | -0.07/-0.10/-0.12 | -0.15/-0.17/-0.03
+#   M15 + engulfing H1, limit, SL 1 ATR:   -0.02/-0.08/-0.10 | -0.04/-0.09/-0.10 | +0.03/-0.01/+0.07
+#   M15 te gjitha, rej, SL 1 ATR:          -0.00/-0.02/-0.00 | -0.00/-0.00/+0.00 | +0.02/+0.09/+0.06
+#   M5: -0.12 deri +0.06 kudo.  M30+H1: -0.08 deri +0.13, pa shenje te qendrueshme.
+#   I vetmi grup >= 0 ne te tri periudhat: M15, TL + SNR ne >= 2 TF, SL 1 ATR
+#     (limit -0.06/-0.04/+0.01 | +0.08/+0.08/+0.10 | +0.28/+0.29/+0.39; rej +0.00/-0.01/+0.07 | +0.11/+0.08/+0.10 |
+#     +0.22/+0.43/+0.54), ~130 trade ne vit. Nje nga ~54 grupe te testuara: mund te jete rastesi; per M30+H1
+#     i njejti filter del -0.18..+0.08. Kandidat vetem per test live me sinjale (pa trade).
