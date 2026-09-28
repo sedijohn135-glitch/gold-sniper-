@@ -1,15 +1,17 @@
 """ZONA SNIPER: rregullat e pronarit (28 shtator 2026), XAUUSD.
 
-Trendi (asnjehere kunder tij):
-  A: D1 dhe H4 ne trend + engulfing H1 ne te njejtin drejtim (6 oret e fundit) -> pattern ne M30, M15, M5, M1
-  B: D1 ne trend + engulfing H4 ne te njejtin drejtim (12 oret e fundit)       -> pattern ne H1, M30, M15, M5, M1
-  Trendi i nje TF: mbyllja mbi (nen) EMA20 dhe EMA20 me e larte (me e ulet) se 3 qirinj me pare.
-Pattern-i (BUY; SELL = pasqyra):
-  DBD: cmimi bie ne baze, qiri i fundit bullish i bazes, renie nen te; thyerje paster lart (mbyllje mbi majen
-  e qiririt, trup >= 50%). Zona = hija e qiririt nga open (vija e afert) deri te low (vija e larget).
-Konfluenca: trendline (H1/M30/M15) ose SNR (swing H4/H1/M30/M15 ne te majte) ne nivelin e zones.
+Kombinimi (asnjehere kunder trendit):
+  - Engulfing i paster (gllaberon te gjithe qiririn e meparshem) ne H4, H1 ose M30, ne drejtim te trendit D1
+    (per engulfing H1/M30 edhe trendi H4). Trendi: mbyllja mbi (nen) EMA20 me EMA20 ne rritje (renie).
+  - Pattern-i kerkohet ne cdo TF poshte TF-se se engulfing-ut, deri ne M1:
+      H4 -> H1, M30, M15, M5, M1 | H1 -> M30, M15, M5, M1 | M30 -> M15, M5, M1
+Pattern-i (BUY; SELL = pasqyra): DBD i thyer paster lart; zona = hija e qiririt te fundit bullish te bazes,
+  nga open (vija e afert) deri te low (vija e larget).
+Konfluenca (te pakten 1): SNR ne H4/H1/M30 (swing ne te majte te bazes) ose trendline me 3 prekje
+  (H4/H1/M30) qe arrin tani ne zone.
 Hyrja: pasi cmimi prek zonen, mbyllja e pare M1 jashte saj (rejection).
-SL: 20 pips (2$) pertej vijes se larget. TP: 20/30/40/60/80/100 pips, 1/6 ne secilin; SL ne hyrje pas TP1.
+SL: 20 pips (2$) pertej vijes se larget. TP sipas TF-se se pattern-it (pjese te barabarta, SL ne hyrje pas TP1):
+  M1/M5 20/30 pips | M15 30/40/60 | M30 40/60/80 | H1 80/100 pastaj trailing deri 200 pips.
 Invalidimi: mbyllje me trup pertej vijes se larget ne TF-ne e pattern-it (vetem wick = ende e vlefshme).
 
 `entries(m1, m15, p)` jep te gjitha hyrjet (backtest); `signal(m1, m15, p)` vetem ate ne qirin e fundit M1.
@@ -23,23 +25,23 @@ from .zones import SRV, aggregate, swings
 MIN = 60_000
 TF_MIN = {"M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 60, "H4": 240, "D1": 1440}
 PATTERN_TFS = ("H1", "M30", "M15", "M5", "M1")
-COMBO_A = ("M30", "M15", "M5", "M1")
-COMBO_B = ("H1", "M30", "M15", "M5", "M1")
+ENGULF = {"H4": ("H1", "M30", "M15", "M5", "M1"), "H1": ("M30", "M15", "M5", "M1"), "M30": ("M15", "M5", "M1")}
+TPS = {"M1": (2.0, 3.0), "M5": (2.0, 3.0), "M15": (3.0, 4.0, 6.0), "M30": (4.0, 6.0, 8.0), "H1": (8.0, 10.0, 20.0)}
+TRAIL = {"H1": 5.0}                                    # $: pjesa e fundit ndjek cmimin pas TP2
 
 
 @dataclass
 class P:
     sl_pips: float = 2.0                               # $ pertej vijes se larget (20 pips)
-    tps: tuple = (2.0, 3.0, 4.0, 6.0, 8.0, 10.0)       # $ nga hyrja (20-100 pips)
     be_after_tp1: bool = True
     ema: int = 20
-    h1_engulf_h: float = 6.0
-    h4_engulf_h: float = 12.0
+    engulf_bars: int = 3                               # engulfing-u ne 3 qirinjte e fundit te TF-se se tij
     max_age_h: float = 72.0                            # zona vlen max 72 ore ose 300 qirinj te TF-se
     need_conf: int = 1                                 # sa nga {TL, SNR} duhen
     tol_atr: float = 0.2                               # toleranca e nivelit (ATR e TF-se se konfluences)
     min_tol: float = 1.0                               # $
     conf_days: float = 10.0                            # SNR: swing-et e 10 diteve para bazes
+    tl_touch_atr: float = 0.15                         # prekja e trete e trendline-it: +-0.15 ATR
 
 
 def _mirror(bars):
@@ -74,11 +76,13 @@ def _trend_marks(bars, ms, n):
 
 
 def _engulf_marks(bars, ms):
+    """Engulfing i paster: gllaberon te gjithe qiririn e meparshem (mbyll pertej high/low-it te tij
+    dhe e mbulon me range-in e vet)."""
     out = []
     for p, b in zip(bars, bars[1:]):
-        if p.c < p.o and b.c > b.o and b.c > p.o and b.o <= p.c:
+        if p.c < p.o and b.c > b.o and b.c > p.h and b.l <= p.l:
             out.append((b.t + ms, 1))
-        elif p.c > p.o and b.c < b.o and b.c < p.o and b.o >= p.c:
+        elif p.c > p.o and b.c < b.o and b.c < p.l and b.h >= p.h:
             out.append((b.t + ms, -1))
     return out
 
@@ -88,26 +92,39 @@ def _at(marks, keys, t):
     return marks[i][1] if i >= 0 else 0
 
 
-def _lines(bars, ms):
-    """Trendline nga dy swing low ne rritje (+1) dhe nga dy swing high ne renie (-1)."""
+def _lines3(bars, ms, touch_atr):
+    """Trendline me 3 prekje: nga swing low ne rritje (+1) dhe swing high ne renie (-1), e pathyer me mbyllje.
+    (njihet, drejtimi, i1, v1, pjerresia, i vdekur)."""
+    atr = atr_series(bars, 14)
+    sw = swings(bars, 3)
     out = []
-    lows, highs = [], []
-    for c, i, k, v in swings(bars, 3):
-        src = lows if k == "L" else highs
-        src.append((i, v))
-        if len(src) < 2:
-            continue
-        (i1, v1), (i2, v2) = src[-2], src[-1]
-        if i2 - i1 < 5 or (k == "L" and v2 <= v1) or (k == "H" and v2 >= v1):
-            continue
-        slope = (v2 - v1) / (i2 - i1)
-        dead = min(len(bars), i2 + 240)
-        for q in range(i2 + 1, dead):
-            y = v1 + slope * (q - i1)
-            if (k == "L" and bars[q].c < y) or (k == "H" and bars[q].c > y):
-                dead = q
-                break
-        out.append((bars[c].t + ms, 1 if k == "L" else -1, i1, v1, slope, dead))
+    for kind, d in (("L", 1), ("H", -1)):
+        pts = [(c, i, v) for c, i, k, v in sw if k == kind]
+        for a in range(len(pts)):
+            for b in range(a + 1, min(a + 8, len(pts))):
+                c1, i1, v1 = pts[a]
+                c2, i2, v2 = pts[b]
+                if i2 - i1 < 3 or (d == 1 and v2 <= v1) or (d == -1 and v2 >= v1):
+                    continue
+                slope = (v2 - v1) / (i2 - i1)
+                third = None
+                for q in range(b + 1, min(b + 8, len(pts))):
+                    c3, i3, v3 = pts[q]
+                    x = atr[i3]
+                    if x == x and abs(v3 - (v1 + slope * (i3 - i1))) <= touch_atr * x:
+                        third = (c3, i3)
+                        break
+                if third is None:
+                    continue
+                dead = min(len(bars), third[1] + 240)
+                for q in range(i1 + 1, dead):
+                    y = v1 + slope * (q - i1)
+                    x = atr[q] if atr[q] == atr[q] else 0.0
+                    if (d == 1 and bars[q].c < y - 0.1 * x) or (d == -1 and bars[q].c > y + 0.1 * x):
+                        dead = q
+                        break
+                if dead > third[1]:
+                    out.append((bars[third[0]].t + ms, d, i1, v1, slope, dead))
     return out
 
 
@@ -139,7 +156,8 @@ def _patterns(B, ms):
 
 
 def entries(m1, m15, p: P):
-    """Te gjitha hyrjet: dict(t, i, side, entry, sl, tps, tf, combo, near, far, tl, snr)."""
+    """Te gjitha hyrjet: dict(t, i, side, entry, sl, tps, tp_offsets, trail, tf, combo (TF e engulfing-ut),
+    near, far, tl, snr)."""
     if not m1 or not m15:
         return []
     last = m1[-1].t + MIN
@@ -151,27 +169,27 @@ def entries(m1, m15, p: P):
     ms = {tf: TF_MIN[tf] * MIN for tf in T}
     trend = {tf: _trend_marks(T[tf], ms[tf], p.ema) for tf in ("D1", "H4")}
     trend_k = {tf: [x[0] for x in v] for tf, v in trend.items()}
-    eng = {tf: _engulf_marks(T[tf], ms[tf]) for tf in ("H1", "H4")}
+    eng = {tf: _engulf_marks(T[tf], ms[tf]) for tf in ENGULF}
     eng_k = {tf: [x[0] for x in v] for tf, v in eng.items()}
     ctx = {}
-    for tf in ("H4", "H1", "M30", "M15"):
+    for tf in ("H4", "H1", "M30"):
         B = T[tf]
         sw = sorted((B[c].t + ms[tf], v) for c, i, k, v in swings(B, 3))
-        ctx[tf] = dict(t=[b.t for b in B], atr=atr_series(B, 14), lines=_lines(B, ms[tf]) if tf != "H4" else [],
+        ctx[tf] = dict(t=[b.t for b in B], atr=atr_series(B, 14), lines=_lines3(B, ms[tf], p.tl_touch_atr),
                        sw=sw, swk=[x[0] for x in sw])
     t1 = [b.t for b in m1]
 
     def allowed(t, d, tf):
+        """TF-ja e engulfing-ut qe e lejon kete hyrje (me e larta), ose None."""
         if _at(trend["D1"], trend_k["D1"], t) != d:
             return None
-        for combo, etf, hours, tfs, need_h4 in (("A", "H1", p.h1_engulf_h, COMBO_A, True),
-                                               ("B", "H4", p.h4_engulf_h, COMBO_B, False)):
-            if tf not in tfs or (need_h4 and _at(trend["H4"], trend_k["H4"], t) != d):
+        for etf, below in ENGULF.items():
+            if tf not in below or (etf != "H4" and _at(trend["H4"], trend_k["H4"], t) != d):
                 continue
             k = eng_k[etf]
-            for q in range(bisect.bisect_left(k, t - hours * 3_600_000), bisect.bisect_right(k, t)):
+            for q in range(bisect.bisect_left(k, t - p.engulf_bars * ms[etf]), bisect.bisect_right(k, t)):
                 if eng[etf][q][1] == d:
-                    return combo
+                    return etf
         return None
 
     def confluence(t, zlo, zhi, d, tbase):
@@ -230,8 +248,9 @@ def entries(m1, m15, p: P):
                             touched = False              # rejection pa kushtet: pritet prekja tjeter
                             continue
                         sl = far - p.sl_pips if d == 1 else far + p.sl_pips
-                        tps = [b.c + d * x_ for x_ in p.tps]
+                        tps = [b.c + d * x_ for x_ in TPS[tf]]
                         out.append(dict(t=t, i=j, side="BUY" if d == 1 else "SELL", entry=b.c, sl=sl, tps=tps,
+                                        tp_offsets=TPS[tf], trail=TRAIL.get(tf, 0.0),
                                         tf=tf, combo=combo, near=near, far=far, tl=tl, snr=snr))
                         break
     out.sort(key=lambda e: e["t"])

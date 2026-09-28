@@ -1,7 +1,7 @@
 """Backtest i modulit live ZONA SNIPER (bot/wick.py, rregullat e 28 shtatorit) me te njejtin kod si boti.
 
-Hyrja ne mbylljen e qiririt M1 te rejection-it (+spread per blerje), SL 2$ pertej zones, TP 20/30/40/60/80/100
-pips me 1/6 ne secilin, SL ne hyrje pas TP1. Nje pozicion njeheresh, hyrje 01-20 UTC, e premte mbyllet 19:00 UTC.
+Hyrja ne mbylljen e qiririt M1 te rejection-it (+spread per blerje), SL 2$ pertej zones, TP sipas TF-se se
+pattern-it (pjese te barabarta), SL ne hyrje pas TP1, trailing per H1. Nje pozicion njeheresh, hyrje 01-20 UTC, e premte mbyllet 19:00 UTC.
     python -m research.zone_sniper <m1.pkl>
 """
 import pickle
@@ -24,6 +24,7 @@ def simulate(m1, e, spread, p):
     parts = [1 / len(e["tps"])] * len(e["tps"])
     r_total, idx = 0.0, 0
     stop = sl
+    best = entry
     for j in range(e["i"] + 1, min(e["i"] + 4320, len(m1))):
         b = m1[j]
         lo, hi = (b.l, b.h) if buy else (b.l + spread, b.h + spread)
@@ -41,6 +42,9 @@ def simulate(m1, e, spread, p):
             idx += 1
             if idx == 1 and p.be_after_tp1:
                 stop = entry
+        best = max(best, hi) if buy else min(best, lo)
+        if e.get("trail") and idx >= 2:
+            stop = max(stop, best - e["trail"]) if buy else min(stop, best + e["trail"])
         if idx == len(e["tps"]):
             return r_total, j, idx
     x = m1[j].c
@@ -89,8 +93,11 @@ if __name__ == "__main__":
             print(line([x for x in T if x["t"] >= half], "  qer-sht"))
             for tf in wick.PATTERN_TFS:
                 print(line([x for x in T if x["tf"] == tf], f"  pattern {tf}"))
-            for c in ("A", "B"):
-                print(line([x for x in T if x["combo"] == c], f"  kombinimi {c}"))
+            for c in ("H4", "H1", "M30"):
+                print(line([x for x in T if x["combo"] == c], f"  engulfing {c}"))
+            print(line([x for x in T if x["tl"]], "  me trendline 3 prekje"))
+            print(line([x for x in T if x["snr"]], "  me SNR"))
+            print(line([x for x in T if x["tl"] and x["snr"]], "  me te dyja"))
             print("  TP te arritura:", sorted(Counter(x["tps_hit"] for x in T).items()),
                   "| risku mesatar %.2f$" % (sum(x["risk"] for x in T) / max(len(T), 1)))
 
@@ -100,3 +107,10 @@ if __name__ == "__main__":
 #   kombinimi A (D1+H4 trend, engulfing H1) 785 tr -22.2R | kombinimi B (D1 trend, engulfing H4) 411 tr +31.5R
 #   TP te arritura: 0:410, 1:218, 2:144, 3:140, 4:68, 5:47, 6 (te gjitha):169 | risku mesatar 4.42$
 #   kosto 0.30$: 1193 trade -28.1R.
+#
+# Versioni 2 (28 shtator, mbremje): engulfing i paster H4/H1/M30, pattern ne TF-te poshte, SNR H4/H1/M30 ose
+# TL me 3 prekje, TP sipas TF-se (M1/M5 20/30, M15 30/40/60, M30 40/60/80, H1 80/100 + trailing 50 pips deri 200):
+#   kosto 0.17$: 468 trade -12.4R (-0.027R/trade) fitime 64% DD 15.4R | jan-maj -5.1R, qer-sht -7.3R
+#   engulfing H4 228 tr -15.9R | H1 156 tr -3.0R | M30 84 tr +6.4R
+#   me trendline 3 prekje 41 tr +9.3R (80% fitime) | me SNR 456 tr -14.4R | te dyja 29 tr +7.2R
+#   kosto 0.30$: -32.1R

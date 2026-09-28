@@ -40,13 +40,15 @@ fund të shtatorit ADR ishte ~2.0% dhe po binte. Javët me 🌙 s'kanë trade: s
 ## Moduli ZONA SNIPER (rregullat e pronarit, 28 shtator 2026)
 
 Rregullat janë te `bot/wick.py` dhe README → "Moduli i pestë". Në 8 muajt e 2026:
-- Rreth 35 trade në javë, 1,196 trade gjithsej, +9.3R (0.008R për trade), 63% fitime.
-- Kombinimi B (D1 + engulfing H4) +31.5R; kombinimi A (D1 + H4 + engulfing H1) −22.2R.
-- Me kosto 0.30$: −28R.
+- ~14 trade në javë, 468 trade gjithsej, −12.4R, 64% fitime.
+- Me trendline 3 prekje: 41 trade, +9.3R. Vetëm me SNR: −14.4R.
+- Sipas engulfing-ut: H4 −15.9R, H1 −3.0R, M30 +6.4R.
 
-**Pas 4 javësh** (~140 trade):
-- Krahaso kombinimin A me B në raport; mesazhi 🎯 tregon kombinimin.
-- Nën −15R, fike (`ZONE_SNIPER=false`) ose lër vetëm kombinimin B.
+**Pas 4 javësh** (~55 trade), në mesazhet 🎯 krahaso:
+- trade-t me "trendline" kundrejt atyre vetëm me "SNR";
+- engulfing H4, H1 dhe M30.
+
+Nëse vetëm trendline-i fiton, bëje të detyrueshëm. Nën −15R, fike (`ZONE_SNIPER=false`).
 
 ## Si gjykohet pas 4 javësh (vetëm ari)
 

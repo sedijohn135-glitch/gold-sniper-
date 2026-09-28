@@ -198,9 +198,10 @@ class GoldSniper:
                 log.info("Moduli LAJMI: 8:30/10:00/14:00 NY, qiri M5 >= 2.5 x ATR -> hyrje ne drejtim te lajmit, "
                          "trailing | sniper pa hyrje 30 min para lajmeve High USD (ForexFactory)")
             if c.zone_on:
-                log.info("Moduli ZONA SNIPER: trendi D1(+H4) + engulfing H1/H4 -> DBD/RBR i thyer (H1..M1), hija e "
-                         "qiririt + TL/SNR + rejection M1 | SL %.0f pips pertej zones | TP %s pips, SL ne hyrje pas TP1",
-                         self.zone_params.sl_pips * 10, "/".join(f"{x * 10:.0f}" for x in self.zone_params.tps))
+                log.info("Moduli ZONA SNIPER: trendi D1 + engulfing i paster H4/H1/M30 -> DBD/RBR i thyer ne TF-te "
+                         "poshte (deri M1), hija e qiririt + SNR H4/H1/M30 ose TL 3 prekje + rejection M1 | SL %.0f pips "
+                         "pertej zones | TP M1/M5 20/30, M15 30/40/60, M30 40/60/80, H1 80/100 + trailing deri 200 pips",
+                         self.zone_params.sl_pips * 10)
             if c.hier_on:
                 log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
                          "(divergjence AO ose retest SBR/RBS) + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
@@ -642,7 +643,8 @@ class GoldSniper:
             plan = self.plans[pid]
             plan["tps"] = [round(entry + d * x, 2) for x in extra["tp_offsets"]]
             plan["parts"] = wick.split_volume(int(round(lots * c.lot_size * 100)), c.lot_size, len(plan["tps"]))
-            plan.update(tp_idx=0, be=extra.get("be", True), realized_r=0.0, realized_pnl=0.0, closed_frac=0.0)
+            plan.update(tp_idx=0, be=extra.get("be", True), realized_r=0.0, realized_pnl=0.0, closed_frac=0.0,
+                        trail=extra.get("trail", 0.0), best=entry)
             plan["tp"] = tp = plan["tps"][-1]
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
@@ -655,7 +657,9 @@ class GoldSniper:
             + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
                f"TP {tp:.2f} (niveli fresh perballe)" if module == "hier" else
                "TP " + " / ".join(f"{abs(x - entry) * 10:.0f}" for x in self.plans[pid].get("tps", [tp])) +
-               " pips (1/6 ne secilin), SL ne hyrje pas TP1" if module == "zone" else
+               f" pips ({len(self.plans[pid].get('tps', [1]))} pjese), SL ne hyrje pas TP1"
+               + (f", pastaj trailing {self.plans[pid]['trail'] * 10:.0f} pips" if self.plans[pid].get("trail") else "")
+               if module == "zone" else
                f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
         self.protect(pid, details)
 
@@ -819,7 +823,7 @@ class GoldSniper:
         if not sig:
             return
         conf_txt = " + ".join(x for x, ok in (("trendline", sig["tl"]), ("SNR", sig["snr"])) if ok)
-        trend_txt = ("D1 + H4 ne trend + engulfing H1" if sig["combo"] == "A" else "D1 ne trend + engulfing H4")
+        trend_txt = f"trendi D1{'' if sig['combo'] == 'H4' else ' + H4'} + engulfing {sig['combo']}"
         kind = "DBD" if sig["side"] == "BUY" else "RBR"
         note = (f"ZONA SNIPER: {trend_txt} | {kind} {sig['tf']} e thyer, zona {min(sig['near'], sig['far']):.2f}-"
                 f"{max(sig['near'], sig['far']):.2f} | {conf_txt} | rejection M1")
@@ -846,19 +850,30 @@ class GoldSniper:
         lots = self.lots_for(risk)
         if lots > 0:
             self.open_trade(sig["side"], lots, risk, entry, note=note, module="zone",
-                            tp_price=entry + p.tps[-1] if buy else entry - p.tps[-1],
-                            extra={"tp_offsets": list(p.tps), "be": p.be_after_tp1})
+                            tp_price=entry + sig["tp_offsets"][-1] if buy else entry - sig["tp_offsets"][-1],
+                            extra={"tp_offsets": list(sig["tp_offsets"]), "be": p.be_after_tp1, "trail": sig["trail"]})
 
     def manage_partials(self, pid, pos, plan):
         """ZONA SNIPER: mbyll 1/6 ne cdo TP (pjesa e fundit ne TP-ne e brokerit), SL ne hyrje pas TP1."""
         tps, parts = plan.get("tps") or [], plan.get("parts") or []
         idx = plan.get("tp_idx", 0)
-        if idx >= len(parts) - 1:
+        if idx >= len(parts) - 1 and not plan.get("trail"):
             return
         buy = plan["side"] == "BUY"
         bid, ask = self.spot()
         px = bid if buy else ask
         entry, total = plan["entry"], sum(parts)
+        plan["best"] = max(plan.get("best", entry), px) if buy else min(plan.get("best", entry), px)
+        # H1: pas TP2 pjesa e mbetur ndjek cmimin (trailing), TP-ja e fundit 200 pips
+        if plan.get("trail") and idx >= 2:
+            new_sl = round(plan["best"] - plan["trail"] if buy else plan["best"] + plan["trail"], 2)
+            if (buy and new_sl >= plan["sl"] + 0.5) or (not buy and new_sl <= plan["sl"] - 0.5):
+                try:
+                    self.client.call("amend_position", {"positionId": pid, "stopLoss": new_sl})
+                    plan["sl"] = new_sl
+                    log.info("  ZONA SNIPER trailing: SL e %s ne %.2f", pid, new_sl)
+                except McpError as e:
+                    log.error("  trailing deshtoi per %s: %s", pid, e)
         while idx < len(parts) - 1 and ((buy and px >= tps[idx]) or (not buy and px <= tps[idx])):
             vol = parts[idx]
             try:
@@ -874,7 +889,7 @@ class GoldSniper:
             idx += 1
             plan["tp_idx"] = idx
             pips = abs(tps[idx - 1] - entry) * 10
-            txt = f"🎯 TP{idx} +{pips:.0f} pips: u mbyll {idx}/{len(parts)} e pozicionit @ {px:.2f}"
+            txt = f"🎯 TP{idx} +{pips:.0f} pips: u mbyll pjesa {idx}/{len(parts)} @ {px:.2f}"
             if idx == 1 and plan.get("be"):
                 try:
                     self.client.call("amend_position", {"positionId": pid, "stopLoss": round(entry, 2)})
