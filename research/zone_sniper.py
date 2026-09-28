@@ -1,31 +1,66 @@
-"""Backtest i modulit live ZONA SNIPER (bot/wick.py) me te njejtin kod si boti.
+"""Backtest i modulit live ZONA SNIPER (bot/wick.py, rregullat e 28 shtatorit) me te njejtin kod si boti.
 
-Hyrja ne mbylljen e qiririt M5 te rejection-it (+spread per blerje), SL/TP fikse, nje pozicion njeheresh,
-hyrje 01-20 UTC, e premte mbyllet 19:00 UTC.
-    python -m research.zone_sniper <m5.pkl> [k]
+Hyrja ne mbylljen e qiririt M1 te rejection-it (+spread per blerje), SL 2$ pertej zones, TP 20/30/40/60/80/100
+pips me 1/6 ne secilin, SL ne hyrje pas TP1. Nje pozicion njeheresh, hyrje 01-20 UTC, e premte mbyllet 19:00 UTC.
+    python -m research.zone_sniper <m1.pkl>
 """
 import pickle
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 
 from bot import wick
 from bot.confluence import weekend_or_offhours
-from research.hierarchy import outcome
+from bot.zones import aggregate
 
 
-def run(m5, p, spread=0.2, k=1.0, t0=0, t1=2**62):
+def simulate(m1, e, spread, p):
+    buy = e["side"] == "BUY"
+    entry = e["entry"] + (spread if buy else 0)
+    sl = e["sl"]
+    risk = (entry - sl) if buy else (sl - entry)
+    if risk <= 0:
+        return None
+    parts = [1 / len(e["tps"])] * len(e["tps"])
+    r_total, idx = 0.0, 0
+    stop = sl
+    for j in range(e["i"] + 1, min(e["i"] + 4320, len(m1))):
+        b = m1[j]
+        lo, hi = (b.l, b.h) if buy else (b.l + spread, b.h + spread)
+        d = datetime.fromtimestamp(b.t / 1000, timezone.utc)
+        if (d.weekday() == 4 and d.hour >= 19) or d.weekday() >= 5:
+            x = b.o + (0 if buy else spread)
+            r_total += sum(parts[idx:]) * (((x - entry) if buy else (entry - x)) / risk)
+            return r_total, j, idx
+        if (buy and lo <= stop) or (not buy and hi >= stop):
+            r_total += sum(parts[idx:]) * (((stop - entry) if buy else (entry - stop)) / risk)
+            return r_total, j, idx
+        while idx < len(e["tps"]) and ((buy and hi >= e["tps"][idx]) or (not buy and lo <= e["tps"][idx])):
+            tp = e["tps"][idx]
+            r_total += parts[idx] * (((tp - entry) if buy else (entry - tp)) / risk)
+            idx += 1
+            if idx == 1 and p.be_after_tp1:
+                stop = entry
+        if idx == len(e["tps"]):
+            return r_total, j, idx
+    x = m1[j].c
+    return r_total + sum(parts[idx:]) * (((x - entry) if buy else (entry - x)) / risk), j, idx
+
+
+def run(m1, p, spread=0.17):
+    m15 = aggregate(m1, 15)
     T, free = [], -1
-    for e in wick.entries(m5, p):
-        t = m5[e["i"]].t + wick.M5
-        if e["i"] <= free or not (t0 <= t < t1) or weekend_or_offhours(t, 1, 20, 19):
+    for e in wick.entries(m1, m15, p):
+        if e["i"] <= free or weekend_or_offhours(e["t"], 1, 20, 19):
             continue
-        buy = e["side"] == "BUY"
-        risk = abs(e["entry"] + (spread if buy else 0) - e["sl"])
-        if risk < 3 * k or risk > 25 * k:
+        risk = abs(e["entry"] - e["sl"])
+        if risk > 25:
             continue
-        c = dict(i=e["i"], side=e["side"], entry_c=e["entry"], sl=e["sl"])
-        r, j = outcome(m5, c, e["tp"], min_sl=3 * k, spread=spread)
-        T.append(dict(t=t, r=r, kind=e["kind"], side=e["side"], entry=e["entry"], sl=e["sl"], tp=e["tp"]))
+        s = simulate(m1, e, spread, p)
+        if s is None:
+            continue
+        r, j, tps_hit = s
+        T.append(dict(e, r=r, tps_hit=tps_hit, risk=risk))
         free = j
     return T
 
@@ -38,22 +73,30 @@ def line(T, name):
         eq += x["r"]
         peak = max(peak, eq)
         dd = max(dd, peak - eq)
-    return f"{name:28} {n:4} trade {s:+7.1f}R ({s / max(n, 1):+.3f}R/trade) fitime {sum(x['r'] > 0.05 for x in T) / max(n, 1):4.0%} DD {dd:5.1f}R"
+    return (f"{name:26} {n:4} trade {s:+7.1f}R ({s / max(n, 1):+.3f}R/trade) fitime {sum(x['r'] > 0.05 for x in T) / max(n, 1):4.0%}"
+            f" DD {dd:5.1f}R")
 
 
 if __name__ == "__main__":
-    m5 = pickle.load(open(sys.argv[1], "rb"))
-    k = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
-    p = wick.scaled(wick.P(), k)
+    m1 = pickle.load(open(sys.argv[1], "rb"))
+    p = wick.P()
     for sp in (0.17, 0.30):
-        T = run(m5, p, sp * k, k)
+        T = run(m1, p, sp)
         print(line(T, f"kosto {sp}$ te gjitha"))
-        print(line([x for x in T if x["kind"] == "zone"], "  zona (me engulfing)"))
-        print(line([x for x in T if x["kind"] == "flip"], "  kunder (zona deshtoi)"))
+        if sp == 0.17:
+            half = m1[len(m1) // 2].t
+            print(line([x for x in T if x["t"] < half], "  jan-maj"))
+            print(line([x for x in T if x["t"] >= half], "  qer-sht"))
+            for tf in wick.PATTERN_TFS:
+                print(line([x for x in T if x["tf"] == tf], f"  pattern {tf}"))
+            for c in ("A", "B"):
+                print(line([x for x in T if x["combo"] == c], f"  kombinimi {c}"))
+            print("  TP te arritura:", sorted(Counter(x["tps_hit"] for x in T).items()),
+                  "| risku mesatar %.2f$" % (sum(x["risk"] for x in T) / max(len(T), 1)))
 
-# Rezultati (cTrader M5 26 jan - 25 sht 2026, kosto 0.17$), P e botit (SL 0.5 ATR, TP 2R min 10$):
-#   531 trade +37.3R (+0.070R/trade) fitime 36% DD 25.6R | janar-maj -6.1R, qershor-shtator +43.4R | kunder +3.1R
-# Variante (te gjitha: gjysma e pare negative, e dyta pozitive):
-#   SL 0.2 ATR TP 2R +11.9R | SL 0.2 ATR TP 3R +25.4R | SL 1 ATR TP 1.5R +40.4R | SL 1 ATR TP 3R +38.0R
-# Shembujt e pronarit: 23 sht 12:25 SELL (kunder) +2R, 25 sht 11:10 SELL (kunder) +2R; 22 sht 09:10 BUY
-# (SL 0.5 ATR) mbijeton dip-in 4312.12 te 09:30.
+# Rezultati (cTrader M1 26 jan - 25 sht 2026, rregullat e 28 shtatorit):
+#   kosto 0.17$: 1196 trade +9.3R (+0.008R/trade) fitime 63% DD 28.5R | jan-maj +9.5R, qer-sht -0.2R
+#   pattern: H1 14 tr +2.1R | M30 45 tr +4.4R | M15 95 tr -3.6R | M5 227 tr -7.9R | M1 815 tr +14.3R
+#   kombinimi A (D1+H4 trend, engulfing H1) 785 tr -22.2R | kombinimi B (D1 trend, engulfing H4) 411 tr +31.5R
+#   TP te arritura: 0:410, 1:218, 2:144, 3:140, 4:68, 5:47, 6 (te gjitha):169 | risku mesatar 4.42$
+#   kosto 0.30$: 1193 trade -28.1R.

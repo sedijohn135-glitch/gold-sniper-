@@ -52,13 +52,19 @@ def closed_positions(deals, symbol_id, units_scale=100):
         ds.sort(key=lambda x: x.get("executionTimestamp", 0))
         if len(ds) < 2:
             continue
-        o, c = ds[0], ds[-1]
-        if o.get("tradeSide") == c.get("tradeSide"):
+        o = ds[0]
+        # mbyllje te pjesshme: te gjitha deal-et ne anen tjeter; dalja = mesatarja sipas volumit
+        cs = [x for x in ds[1:] if x.get("tradeSide") != o.get("tradeSide") and x.get("executionPrice")]
+        if not cs:
             continue
-        vol = min(o.get("filledVolume") or o.get("volume") or 0, c.get("filledVolume") or c.get("volume") or 0)
-        out.append(dict(pid=pid, side=o["tradeSide"], entry=price(o["executionPrice"]), exit=price(c["executionPrice"]),
+        vols = [x.get("filledVolume") or x.get("volume") or 0 for x in cs]
+        vol = sum(vols)
+        if vol <= 0:
+            continue
+        exit_px = sum(price(x["executionPrice"]) * v for x, v in zip(cs, vols)) / vol
+        out.append(dict(pid=pid, side=o["tradeSide"], entry=price(o["executionPrice"]), exit=exit_px,
                         units=vol / units_scale, opened=o.get("executionTimestamp", 0),
-                        closed=c.get("executionTimestamp", 0),
+                        closed=cs[-1].get("executionTimestamp", 0),
                         commission=sum(x.get("commission", 0) or 0 for x in ds)))
     return sorted(out, key=lambda x: x["opened"])
 

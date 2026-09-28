@@ -30,6 +30,7 @@ from .strategy import adr_pct, detect, prepare
 from .telegram import Telegram
 
 log = logging.getLogger("gold-sniper")
+MIN_MS = 60_000
 RECENT_LOGS = deque(maxlen=100)
 HIER_NAMES = {"bos": "thyerje strukture M5", "ao": "divergjence AO", "qm": "QM",
               "flip": "retest SBR/RBS (zone M5 e thyer)", "tl": "trendline M30", "ltf": "zone fresh M15/M30"}
@@ -120,6 +121,7 @@ class GoldSniper:
         self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N",
                        "zone": cfg.label + "-Z"}
         self.zone_params = wick.P()
+        self.z_m1, self.z_m15, self.last_m1_t = [], [], None    # qirinjte e ZONA SNIPER
         self.calendar = news.Calendar()
         self.journal = {}        # positionId -> {"module", "r"} per raportin javor
         self.reports_sent = set()
@@ -196,9 +198,9 @@ class GoldSniper:
                 log.info("Moduli LAJMI: 8:30/10:00/14:00 NY, qiri M5 >= 2.5 x ATR -> hyrje ne drejtim te lajmit, "
                          "trailing | sniper pa hyrje 30 min para lajmeve High USD (ForexFactory)")
             if c.zone_on:
-                log.info("Moduli ZONA SNIPER: hija e DBD/RBR M15 e thyer + engulfing M30/H1/H4 + rejection M15 | "
-                         "zona qe deshton -> hyrje kunder | SL %.1f ATR pertej bishtit, TP %.1fR (min %.0f$)",
-                         self.zone_params.sl_buf, self.zone_params.rr, self.zone_params.min_tp)
+                log.info("Moduli ZONA SNIPER: trendi D1(+H4) + engulfing H1/H4 -> DBD/RBR i thyer (H1..M1), hija e "
+                         "qiririt + TL/SNR + rejection M1 | SL %.0f pips pertej zones | TP %s pips, SL ne hyrje pas TP1",
+                         self.zone_params.sl_pips * 10, "/".join(f"{x * 10:.0f}" for x in self.zone_params.tps))
             if c.hier_on:
                 log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
                          "(divergjence AO ose retest SBR/RBS) + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
@@ -439,6 +441,11 @@ class GoldSniper:
                 self.m5_tick(now, positions)
             except McpError as e:
                 log.error("Modulet M5: gabim cTrader: %s", e)
+            if self.cfg.zone_on and self.mkt.kind == "gold":
+                try:
+                    self.zone_tick(now, positions)
+                except McpError as e:
+                    log.error("ZONA SNIPER: gabim cTrader: %s", e)
         self.open_summary = [
             {"conf": "[K] ", "hier": "[H] ", "news": "[L] ", "zone": "[Z] "}.get(self.module_of(p), "")
             + f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
@@ -564,7 +571,7 @@ class GoldSniper:
             lots = c.min_lots
         return lots
 
-    def open_trade(self, side, lots, risk, ref_price, tp_dist=None, note="", module="main", tp_price=None):
+    def open_trade(self, side, lots, risk, ref_price, tp_dist=None, note="", module="main", tp_price=None, extra=None):
         c = self.cfg
         volume = int(round(lots * c.lot_size * 100))
         label = self.labels[module]
@@ -629,6 +636,14 @@ class GoldSniper:
                            "opened": int(time.time() * 1000), "locked_r": 0,
                            "module": module, "fixed": module not in ("main", "news"), "symbol": c.symbol_name,
                            "trail_fixed": module == "news"}
+        if extra and extra.get("tp_offsets"):
+            # TP-te e shkallezuara nga cmimi real i hyrjes; pjesa e fundit mbyllet ne TP-ne e brokerit
+            d = 1 if side == "BUY" else -1
+            plan = self.plans[pid]
+            plan["tps"] = [round(entry + d * x, 2) for x in extra["tp_offsets"]]
+            plan["parts"] = wick.split_volume(int(round(lots * c.lot_size * 100)), c.lot_size, len(plan["tps"]))
+            plan.update(tp_idx=0, be=extra.get("be", True), realized_r=0.0, realized_pnl=0.0, closed_frac=0.0)
+            plan["tp"] = tp = plan["tps"][-1]
         self.day_stats["opened"] += 1
         log.info("  U HAP pozicioni %s @ %.2f -> SL %.2f | %s", pid, entry, sl,
                  f"TP {tp:.2f}" if tp else f"pa TP, trailing {c.trail_adr:.2f} x ADR")
@@ -639,7 +654,8 @@ class GoldSniper:
             f"SL {sl:.2f} ({risk:.2f}$, rrezik ~{risk_money:,.2f} {self.deposit_asset})\n"
             + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
                f"TP {tp:.2f} (niveli fresh perballe)" if module == "hier" else
-               f"TP {tp:.2f} ({abs(tp - entry) / risk:.1f}R, {abs(tp - entry) * 10:.0f} pips)" if module == "zone" else
+               "TP " + " / ".join(f"{abs(x - entry) * 10:.0f}" for x in self.plans[pid].get("tps", [tp])) +
+               " pips (1/6 ne secilin), SL ne hyrje pas TP1" if module == "zone" else
                f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
         self.protect(pid, details)
 
@@ -717,6 +733,9 @@ class GoldSniper:
             if plan is None and self.adr is None:
                 continue          # pas rinisjes: prit ADR-ne (tick-u i ardhshem) per te njohur modulin
             module = self.module_of(pos)
+            if module == "zone" and plan is not None and plan.get("tps"):
+                self.manage_partials(pid, pos, plan)
+                continue
             if module not in ("main", "news"):
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
                 if plan is None:
@@ -777,16 +796,94 @@ class GoldSniper:
                          "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
                                  f"HIERARKIA: muri {sig['htf']} s'u thye + {conf_txt} + rejection M5")
-        if c.zone_on and self.mkt.kind == "gold":
-            sig = wick.signal(self.m5, self.zone_params)
-            if sig:
-                zone_txt = f"zona M15 {sig['lo']:.2f}-{sig['hi']:.2f}"
-                note = (f"ZONA SNIPER: engulfing HTF + {zone_txt} (hija e {'DBD' if sig['side'] == 'BUY' else 'RBR'} "
-                        f"e thyer) + rejection M15" if sig["kind"] == "zone" else
-                        f"ZONA SNIPER (kunder): {zone_txt} deshtoi, retest + rejection M15")
-                log.info("ZONA SNIPER %s %s | %s | SL %.2f TP %.2f | qiri %s", sig["kind"], sig["side"], zone_txt,
-                         sig["sl"], sig["tp"], utc(newest.t))
-                self.fixed_trade("zone", sig, 1.0, c.min_sl, c.max_sl, now, positions, note)
+
+    # ------------------------------------------------------------ ZONA SNIPER (M1)
+    def zone_tick(self, now, positions):
+        """Cdo minute: M1 (3 dite) dhe M15 (40 dite) -> ZONA SNIPER ne mbylljen e qiririt M1."""
+        c = self.cfg
+        if self.last_m1_t is not None and now < self.last_m1_t + 2 * MIN_MS + 3000:
+            return
+        since = now - 3 * 86_400_000 if not self.z_m1 else self.z_m1[-1].t - 10 * MIN_MS
+        merged = {b.t: b for b in self.z_m1}
+        merged.update({b.t: b for b in fetch_bars(self.client, c.symbol_id, since, now, "M_1")})
+        self.z_m1 = [merged[k] for k in sorted(merged) if k >= now - 3 * 86_400_000 and k + MIN_MS <= now]
+        if not self.z_m1 or self.z_m1[-1].t == self.last_m1_t:
+            return
+        self.last_m1_t = self.z_m1[-1].t
+        if not self.z_m15 or now >= self.z_m15[-1].t + 2 * M15_MS + 3000:
+            since = now - 40 * 86_400_000 if not self.z_m15 else self.z_m15[-1].t - M15_MS
+            merged = {b.t: b for b in self.z_m15}
+            merged.update({b.t: b for b in fetch_bars(self.client, c.symbol_id, since, now, "M_15")})
+            self.z_m15 = [merged[k] for k in sorted(merged) if k >= now - 40 * 86_400_000 and k + M15_MS <= now]
+        sig = wick.signal(self.z_m1, self.z_m15, self.zone_params)
+        if not sig:
+            return
+        conf_txt = " + ".join(x for x, ok in (("trendline", sig["tl"]), ("SNR", sig["snr"])) if ok)
+        trend_txt = ("D1 + H4 ne trend + engulfing H1" if sig["combo"] == "A" else "D1 ne trend + engulfing H4")
+        kind = "DBD" if sig["side"] == "BUY" else "RBR"
+        note = (f"ZONA SNIPER: {trend_txt} | {kind} {sig['tf']} e thyer, zona {min(sig['near'], sig['far']):.2f}-"
+                f"{max(sig['near'], sig['far']):.2f} | {conf_txt} | rejection M1")
+        log.info("ZONA SNIPER %s %s %s | %s | SL %.2f | qiri %s", sig["side"], sig["tf"], sig["combo"], conf_txt,
+                 sig["sl"], utc(self.last_m1_t))
+        self.zone_trade(sig, now, positions, note)
+
+    def zone_trade(self, sig, now, positions, note):
+        c, p = self.cfg, self.zone_params
+        if self.daily_limit_hit:
+            return log.info("  injoruar: u arrit humbja max ditore")
+        if any(self.module_of(q) == "zone" for q in positions):
+            return log.info("  injoruar: ZONA SNIPER ka pozicion te hapur")
+        if not self.mkt.can_open(datetime.fromtimestamp(now / 1000, timezone.utc)):
+            return log.info("  injoruar: jashte orarit te %s", self.mkt.name)
+        bid, ask = self.spot()
+        if ask - bid > c.max_spread:
+            return log.info("  injoruar: spread %.2f", ask - bid)
+        buy = sig["side"] == "BUY"
+        entry = ask if buy else bid
+        risk = (entry - sig["sl"]) if buy else (sig["sl"] - entry)
+        if risk <= 0 or risk > c.max_sl:
+            return log.info("  injoruar: SL %.2f$", risk)
+        lots = self.lots_for(risk)
+        if lots > 0:
+            self.open_trade(sig["side"], lots, risk, entry, note=note, module="zone",
+                            tp_price=entry + p.tps[-1] if buy else entry - p.tps[-1],
+                            extra={"tp_offsets": list(p.tps), "be": p.be_after_tp1})
+
+    def manage_partials(self, pid, pos, plan):
+        """ZONA SNIPER: mbyll 1/6 ne cdo TP (pjesa e fundit ne TP-ne e brokerit), SL ne hyrje pas TP1."""
+        tps, parts = plan.get("tps") or [], plan.get("parts") or []
+        idx = plan.get("tp_idx", 0)
+        if idx >= len(parts) - 1:
+            return
+        buy = plan["side"] == "BUY"
+        bid, ask = self.spot()
+        px = bid if buy else ask
+        entry, total = plan["entry"], sum(parts)
+        while idx < len(parts) - 1 and ((buy and px >= tps[idx]) or (not buy and px <= tps[idx])):
+            vol = parts[idx]
+            try:
+                self.client.call("close_position", {"positionId": pid, "volume": int(vol)}, retries=1)
+            except McpError as e:
+                log.error("  mbyllja e pjesshme deshtoi per %s: %s", pid, e)
+                break
+            frac = vol / total
+            move = (px - entry) if buy else (entry - px)
+            plan["realized_r"] = plan.get("realized_r", 0.0) + frac * move / plan["risk"]
+            plan["realized_pnl"] = plan.get("realized_pnl", 0.0) + move * vol / 100 * self.usd_to_deposit
+            plan["closed_frac"] = plan.get("closed_frac", 0.0) + frac
+            idx += 1
+            plan["tp_idx"] = idx
+            pips = abs(tps[idx - 1] - entry) * 10
+            txt = f"🎯 TP{idx} +{pips:.0f} pips: u mbyll {idx}/{len(parts)} e pozicionit @ {px:.2f}"
+            if idx == 1 and plan.get("be"):
+                try:
+                    self.client.call("amend_position", {"positionId": pid, "stopLoss": round(entry, 2)})
+                    plan["sl"] = round(entry, 2)
+                    txt += f" | SL ne hyrje ({entry:.2f})"
+                except McpError as e:
+                    log.error("  SL ne hyrje deshtoi per %s: %s", pid, e)
+            self.tg.send(txt)
+            log.info("  %s", txt)
 
     def news_tick(self, newest, now, positions):
         """Qiri i lajmit (8:30/10:00/14:00 NY) me kercim >= 2.5 x ATR -> hyrje ne drejtim te lajmit."""
@@ -959,6 +1056,11 @@ class GoldSniper:
             except McpError:
                 pass
         if found:
+            # me mbyllje te pjesshme: dalja e sakte dihet vetem kur ka ardhur i gjithe volumi
+            need = (plan.get("lots") or 0) * (plan.get("lot_size") or self.cfg.lot_size) * 100
+            got = sum(x.get("filledVolume") or x.get("volume") or 0 for x in found)
+            if plan.get("closed_frac") and got < need * 0.999:
+                return (plan.get("tp") or plan.get("sl")), False
             last = max(found, key=lambda x: x.get("executionTimestamp", 0))
             return to_price(last["executionPrice"]), True
         return (plan.get("tp") or plan.get("sl")), False
@@ -966,6 +1068,8 @@ class GoldSniper:
     def report_close(self, pid, plan, px, exact):
         entry, risk, buy = plan.get("entry"), plan.get("risk") or 1, plan.get("side") == "BUY"
         r = ((px - entry) if buy else (entry - px)) / risk if px and entry else 0.0
+        rest = 1.0 - plan.get("closed_frac", 0.0)          # pjesa qe mbeti pas mbylljeve te pjesshme
+        r = plan.get("realized_r", 0.0) + rest * r
         # pas rinisjes me SL ne fitim rreziku fillestar s'dihet: R s'llogaritet
         r_ok = not plan.get("r_unknown")
         self.journal.setdefault(pid, {}).update(module=plan.get("module") or "main", r=r if r_ok else None)
@@ -973,8 +1077,8 @@ class GoldSniper:
         self.last_balance, self.last_equity = bal, eq
         # fitimi nga cmimet e ketij pozicioni (ndryshimi i balances perzihet kur mbyllen disa pozicione njeheresh)
         lot_size = plan.get("lot_size") or self.markets.get(plan.get("symbol_id"), self.gold).lot_size
-        pnl = ((px - entry) if buy else (entry - px)) * plan.get("lots", 0) * lot_size * self.usd_to_deposit \
-            if px and entry else None
+        pnl = ((px - entry) if buy else (entry - px)) * plan.get("lots", 0) * lot_size * self.usd_to_deposit * rest \
+            + plan.get("realized_pnl", 0.0) if px and entry else None
         if not r_ok:
             r = (pnl or 0) / 100     # vetem per ikonen
         self.day_stats["closed"] += 1

@@ -37,14 +37,16 @@ Që nga 28 shtatori boti s'hap trade me sniper/konfluencë/hierarki kur ADR e 10
 (🌙 në Telegram). Në 2026 ADR ishte gjithmonë ≥ 1.76%, pra pritjet më poshtë mbeten të njëjta; në
 fund të shtatorit ADR ishte ~2.0% dhe po binte. Javët me 🌙 s'kanë trade: shënoji veç në raport.
 
-## Moduli ZONA SNIPER (shtuar 28 shtator 2026)
+## Moduli ZONA SNIPER (rregullat e pronarit, 28 shtator 2026)
 
-Setup-i i pronarit (`bot/wick.py`, README → "Moduli i pestë"). Në 8 muajt e 2026: ~16 trade në javë,
-531 trade gjithsej, +37R (0.07R për trade), 36% fitime. Janar–maj −6R, qershor–shtator +43R.
-Në 10 vjet variantet e pattern-it ishin afër zeros.
-- **Pas 4 javësh:** rreth 60 trade. Pritja është +4R, por me këtë madhësi mostre ±15R është normale.
-- **Nën −15R:** fike (`ZONE_SNIPER=false`).
-- Raporti e tregon si "Zona sniper".
+Rregullat janë te `bot/wick.py` dhe README → "Moduli i pestë". Në 8 muajt e 2026:
+- Rreth 35 trade në javë, 1,196 trade gjithsej, +9.3R (0.008R për trade), 63% fitime.
+- Kombinimi B (D1 + engulfing H4) +31.5R; kombinimi A (D1 + H4 + engulfing H1) −22.2R.
+- Me kosto 0.30$: −28R.
+
+**Pas 4 javësh** (~140 trade):
+- Krahaso kombinimin A me B në raport; mesazhi 🎯 tregon kombinimin.
+- Nën −15R, fike (`ZONE_SNIPER=false`) ose lër vetëm kombinimin B.
 
 ## Si gjykohet pas 4 javësh (vetëm ari)
 

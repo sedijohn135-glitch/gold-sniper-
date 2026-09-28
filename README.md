@@ -176,26 +176,39 @@ prandaj duhen javë të tëra për ta gjykuar. Për ta fikur: `HIERARCHY=false`.
 
 Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca, hierarkia).
 
-### Moduli i pestë: ZONA SNIPER (setup-i i pronarit)
+### Moduli i pestë: ZONA SNIPER (rregullat e pronarit, 28 shtator 2026)
 
-Shembujt e pronarit: 22–25 shtator 2026, zona 4314.75–4318.41. Kodi: `bot/wick.py`.
+Kodi: `bot/wick.py`. Kontrollohet çdo minutë, vetëm në ar.
 
-**BUY:**
-1. **M15:** DBD. Qiri i fundit bullish i bazës jep zonën = **hija e tij, nga open deri te low**.
-2. Rally-ja e thyen pastër: mbyllje M15 mbi majën e atij qiriri, me trup ≥ 50% (SBR në të majtë).
-3. **Engulfing bullish** i mbyllur në M30, H1 ose H4, nga 4 orë para thyerjes deri në hyrje.
-4. Prekja e parë e zonës → **rejection M15**, pra mbyllje mbi zonë brenda 1 ore → BUY në mbyllje.
-5. **SL** nën bishtin më të ulët të retest-it − 0.5 ATR(M15). **TP** 2R, minimumi 100 pips (10$).
-6. **Kundër:** kur zona dështon (mbyllje M15 ≥ 0.25 ATR nën të), bëhet rezistencë. Prekja e parë nga
-   poshtë → rejection → SELL, pa kushtin e engulfing-ut.
+**1. Trendi, asnjëherë kundër tij**
+- **Kombinimi A:** D1 dhe H4 në trend + engulfing H1 në të njëjtin drejtim (6 orët e fundit) → pattern-i
+  kërkohet në **M30, M15, M5, M1**.
+- **Kombinimi B:** D1 në trend + engulfing H4 në të njëjtin drejtim (12 orët e fundit) → pattern-i kërkohet
+  në **H1, M30, M15, M5, M1**.
+- Trendi i një TF: mbyllja mbi (nën) EMA20, me EMA20 në rritje (rënie).
 
-**SELL:** pasqyra (RBR, hija e sipërme e qiririt bearish).
+**2. Pattern-i (BUY; SELL = pasqyra me RBR)**
+- DBD i thyer pastër lart (SBR).
+- Zona = hija e qiririt të fundit bullish të bazës, **nga open deri te low**.
 
-Një pozicion njëherësh, vetëm ari. Label `-Z`, dhe në raport shfaqet si "Zona sniper".
-- Në 8 muajt e 2026 (cTrader, spread 0.17$): 531 trade, **+37R**, 36% fitime, DD 25.6R.
-  Janar–maj **−6R**, qershor–shtator **+43R**.
-- Në 10 vjet, variantet e këtij pattern-i dolën afër zeros (`research/flip_rbr.py`).
-- Testi live vendos. Për ta fikur: `ZONE_SNIPER=false`.
+**3. Konfluenca:** trendline (H1/M30/M15) ose SNR (swing H4/H1/M30/M15 në të majtë) në nivelin e zonës.
+
+**4. Hyrja:** pasi çmimi prek zonën, mbyllja e parë **M1** jashtë saj (rejection).
+
+**5. SL dhe TP**
+- **SL:** 20 pips (2$) përtej vijës së largët të zonës.
+- **TP:** 20 / 30 / 40 / 60 / 80 / 100 pips, **1/6 e pozicionit në secilin**. Pjesa e fundit mbyllet te TP-ja
+  e brokerit.
+- Pas TP1, SL kalon në hyrje (break-even).
+
+**6. Invalidimi:** mbyllje me trup përtej vijës së largët në TF-në e pattern-it → setup-i ka vdekur.
+Vetëm wick = ende i vlefshëm.
+
+**Tjetër:** një pozicion njëherësh, label `-Z`, në raport shfaqet si "Zona sniper".
+- Në 8 muajt e 2026 (i njëjti kod, spread 0.17$): 1,196 trade, **+9.3R**, 63% fitime, DD 28.5R.
+- Kombinimi B **+31.5R** (411 trade), kombinimi A **−22.2R** (785 trade).
+- Për ta fikur: `ZONE_SNIPER=false`. Pa volume në Railway, mbyllja e pjesshme e një pozicioni
+  të hapur humbet pas një deploy-i; SL/TP-ja e brokerit mbeten.
 
 ### Testi 10-vjeçar dhe filtri i arit të qetë
 
@@ -394,7 +407,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
-| `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (setup-i i pronarit: hija e DBD/RBR M15 e thyer + engulfing + rejection) |
+| `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (rregullat e pronarit: trendi D1/H4 + engulfing + zona DBD/RBR + TL/SNR + rejection M1) |
 | `MIN_ADR_PCT` | `1.6` | ari i qetë: nën këtë ADR (% e çmimit) sniper/konfluenca/hierarkia s'hapin trade; `0` = pa filter |
 | `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |
