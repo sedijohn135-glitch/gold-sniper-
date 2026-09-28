@@ -176,6 +176,27 @@ prandaj duhen javë të tëra për ta gjykuar. Për ta fikur: `HIERARCHY=false`.
 
 Kodet e kërkimit për setup-et e tua janë në `research/` (Quasimodo H1+M5, trendline 3rd touch, konfluenca, hierarkia).
 
+### Moduli i pestë: ZONA SNIPER (setup-i i pronarit)
+
+Shembujt e pronarit: 22–25 shtator 2026, zona 4314.75–4318.41. Kodi: `bot/wick.py`.
+
+**BUY:**
+1. **M15:** DBD. Qiri i fundit bullish i bazës jep zonën = **hija e tij, nga open deri te low**.
+2. Rally-ja e thyen pastër: mbyllje M15 mbi majën e atij qiriri, me trup ≥ 50% (SBR në të majtë).
+3. **Engulfing bullish** i mbyllur në M30, H1 ose H4, nga 4 orë para thyerjes deri në hyrje.
+4. Prekja e parë e zonës → **rejection M15**, pra mbyllje mbi zonë brenda 1 ore → BUY në mbyllje.
+5. **SL** nën bishtin më të ulët të retest-it − 0.5 ATR(M15). **TP** 2R, minimumi 100 pips (10$).
+6. **Kundër:** kur zona dështon (mbyllje M15 ≥ 0.25 ATR nën të), bëhet rezistencë. Prekja e parë nga
+   poshtë → rejection → SELL, pa kushtin e engulfing-ut.
+
+**SELL:** pasqyra (RBR, hija e sipërme e qiririt bearish).
+
+Një pozicion njëherësh, vetëm ari. Label `-Z`, dhe në raport shfaqet si "Zona sniper".
+- Në 8 muajt e 2026 (cTrader, spread 0.17$): 531 trade, **+37R**, 36% fitime, DD 25.6R.
+  Janar–maj **−6R**, qershor–shtator **+43R**.
+- Në 10 vjet, variantet e këtij pattern-i dolën afër zeros (`research/flip_rbr.py`).
+- Testi live vendos. Për ta fikur: `ZONE_SNIPER=false`.
+
 ### Testi 10-vjeçar dhe filtri i arit të qetë
 
 Modulet u testuan edhe në 10 vjet ar (2016–2025, HistData M1, `research/tenyear.py`), me vlerat në $
@@ -373,6 +394,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
+| `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (setup-i i pronarit: hija e DBD/RBR M15 e thyer + engulfing + rejection) |
 | `MIN_ADR_PCT` | `1.6` | ari i qetë: nën këtë ADR (% e çmimit) sniper/konfluenca/hierarkia s'hapin trade; `0` = pa filter |
 | `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |

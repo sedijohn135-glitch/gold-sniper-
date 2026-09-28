@@ -21,6 +21,7 @@ from . import confluence as conf
 from . import hierarchy as hier
 from . import news
 from . import report
+from . import wick
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
 from .markets import Market
@@ -116,7 +117,9 @@ class GoldSniper:
         self.last_balance = self.last_equity = None
         self.open_summary = []   # pozicionet e hapura (per /status)
         # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
-        self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N"}
+        self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N",
+                       "zone": cfg.label + "-Z"}
+        self.zone_params = wick.P()
         self.calendar = news.Calendar()
         self.journal = {}        # positionId -> {"module", "r"} per raportin javor
         self.reports_sent = set()
@@ -192,6 +195,10 @@ class GoldSniper:
             if c.news_on:
                 log.info("Moduli LAJMI: 8:30/10:00/14:00 NY, qiri M5 >= 2.5 x ATR -> hyrje ne drejtim te lajmit, "
                          "trailing | sniper pa hyrje 30 min para lajmeve High USD (ForexFactory)")
+            if c.zone_on:
+                log.info("Moduli ZONA SNIPER: hija e DBD/RBR M15 e thyer + engulfing M30/H1/H4 + rejection M15 | "
+                         "zona qe deshton -> hyrje kunder | SL %.1f ATR pertej bishtit, TP %.1fR (min %.0f$)",
+                         self.zone_params.sl_buf, self.zone_params.rr, self.zone_params.min_tp)
             if c.hier_on:
                 log.info("Moduli HIERARKIA: muri H1 (prekja e pare, pa u thyer) + thyerje strukture M5 + "
                          "(divergjence AO ose retest SBR/RBS) + rejection M5 | TP >= %.1fR | SL >= %.1f$", c.hier_rr, c.hier_min_sl)
@@ -330,7 +337,7 @@ class GoldSniper:
         if plan and plan.get("module"):
             return plan["module"]
         tags = (find_key(pos, "label"), find_key(pos, "comment"))
-        m = next((m for m in ("conf", "hier", "news") if self.labels[m] in tags), None)
+        m = next((m for m in ("conf", "hier", "news", "zone") if self.labels[m] in tags), None)
         if m:
             return m
         # pozicion nga para rinisjes pa label: pa TP -> sniper me trailing; TP = rot_tp_adr x ADR nga hyrja
@@ -427,13 +434,13 @@ class GoldSniper:
         self.check_daily_loss(positions)
         if self.cfg.news_on:
             self.calendar.refresh()
-        if self.cfg.conf_on or self.cfg.hier_on or self.cfg.news_on:
+        if self.cfg.conf_on or self.cfg.hier_on or self.cfg.news_on or self.cfg.zone_on:
             try:
                 self.m5_tick(now, positions)
             except McpError as e:
                 log.error("Modulet M5: gabim cTrader: %s", e)
         self.open_summary = [
-            {"conf": "[K] ", "hier": "[H] ", "news": "[L] "}.get(self.module_of(p), "")
+            {"conf": "[K] ", "hier": "[H] ", "news": "[L] ", "zone": "[Z] "}.get(self.module_of(p), "")
             + f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
             f" @ {to_price(find_key(p, 'price', 'entryPrice', 'openPrice')) or 0:.2f}"
             f" | SL {to_price(find_key(p, 'stopLoss')) or 0:.2f}" for p in positions]
@@ -632,6 +639,7 @@ class GoldSniper:
             f"SL {sl:.2f} ({risk:.2f}$, rrezik ~{risk_money:,.2f} {self.deposit_asset})\n"
             + (f"TP {tp:.2f} (nivel konfluence)" if module == "conf" else
                f"TP {tp:.2f} (niveli fresh perballe)" if module == "hier" else
+               f"TP {tp:.2f} ({abs(tp - entry) / risk:.1f}R, {abs(tp - entry) * 10:.0f} pips)" if module == "zone" else
                f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
         self.protect(pid, details)
 
@@ -769,6 +777,16 @@ class GoldSniper:
                          "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
                                  f"HIERARKIA: muri {sig['htf']} s'u thye + {conf_txt} + rejection M5")
+        if c.zone_on and self.mkt.kind == "gold":
+            sig = wick.signal(self.m5, self.zone_params)
+            if sig:
+                zone_txt = f"zona M15 {sig['lo']:.2f}-{sig['hi']:.2f}"
+                note = (f"ZONA SNIPER: engulfing HTF + {zone_txt} (hija e {'DBD' if sig['side'] == 'BUY' else 'RBR'} "
+                        f"e thyer) + rejection M15" if sig["kind"] == "zone" else
+                        f"ZONA SNIPER (kunder): {zone_txt} deshtoi, retest + rejection M15")
+                log.info("ZONA SNIPER %s %s | %s | SL %.2f TP %.2f | qiri %s", sig["kind"], sig["side"], zone_txt,
+                         sig["sl"], sig["tp"], utc(newest.t))
+                self.fixed_trade("zone", sig, 1.0, c.min_sl, c.max_sl, now, positions, note)
 
     def news_tick(self, newest, now, positions):
         """Qiri i lajmit (8:30/10:00/14:00 NY) me kercim >= 2.5 x ATR -> hyrje ne drejtim te lajmit."""
