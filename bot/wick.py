@@ -7,8 +7,8 @@ Kombinimi (asnjehere kunder trendit):
       H4 -> H1, M30, M15, M5, M1 | H1 -> M30, M15, M5, M1 | M30 -> M15, M5, M1
 Pattern-i (BUY; SELL = pasqyra): DBD i thyer paster lart; zona = hija e qiririt te fundit bullish te bazes,
   nga open (vija e afert) deri te low (vija e larget).
-Konfluenca (te pakten 1): SNR ne H4/H1/M30 (swing ne te majte te bazes) ose trendline me 3 prekje
-  (H4/H1/M30) qe arrin tani ne zone.
+Konfluenca: trendline me 3 prekje (H4/H1/M30) qe arrin tani ne zone, E DETYRUESHME; SNR ne H4/H1/M30
+  (swing ne te majte te bazes) shenohet si konfluence shtese.
 Hyrja: pasi cmimi prek zonen, mbyllja e pare M1 jashte saj (rejection).
 SL: 20 pips (2$) pertej vijes se larget. TP sipas TF-se se pattern-it (pjese te barabarta, SL ne hyrje pas TP1):
   M1/M5 20/30 pips | M15 30/40/60 | M30 40/60/80 | H1 80/100 pastaj trailing deri 200 pips.
@@ -38,6 +38,7 @@ class P:
     engulf_bars: int = 3                               # engulfing-u ne 3 qirinjte e fundit te TF-se se tij
     max_age_h: float = 72.0                            # zona vlen max 72 ore ose 300 qirinj te TF-se
     need_conf: int = 1                                 # sa nga {TL, SNR} duhen
+    require_tl: bool = True                            # trendline-i me 3 prekje eshte i detyrueshem
     tol_atr: float = 0.2                               # toleranca e nivelit (ATR e TF-se se konfluences)
     min_tol: float = 1.0                               # $
     conf_days: float = 10.0                            # SNR: swing-et e 10 diteve para bazes
@@ -244,7 +245,7 @@ def entries(m1, m15, p: P):
                     if (d == 1 and b.c > near) or (d == -1 and b.c < near):
                         combo = allowed(t, d, tf)
                         tl, snr = confluence(t, min(near, far), max(near, far), d, tbase) if combo else (False, False)
-                        if not combo or tl + snr < p.need_conf:
+                        if not combo or tl + snr < p.need_conf or (p.require_tl and not tl):
                             touched = False              # rejection pa kushtet: pritet prekja tjeter
                             continue
                         sl = far - p.sl_pips if d == 1 else far + p.sl_pips

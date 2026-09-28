@@ -114,3 +114,7 @@ if __name__ == "__main__":
 #   engulfing H4 228 tr -15.9R | H1 156 tr -3.0R | M30 84 tr +6.4R
 #   me trendline 3 prekje 41 tr +9.3R (80% fitime) | me SNR 456 tr -14.4R | te dyja 29 tr +7.2R
 #   kosto 0.30$: -32.1R
+#
+# Versioni 3 (trendline me 3 prekje i detyrueshem, 28 shtator): kosto 0.17$ 43 trade +8.5R (+0.198R/trade)
+#   fitime 79% DD 2.2R | jan-maj 20 tr +4.8R, qer-sht 23 tr +3.7R | kosto 0.30$ +6.5R
+#   engulfing H4 16 tr +4.0R | H1 21 tr +0.4R | M30 6 tr +4.1R | pattern M1 25 tr +10.5R, M5 10 tr -3.5R, M15 8 tr +1.5R

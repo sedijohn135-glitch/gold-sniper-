@@ -194,9 +194,9 @@ Kodi: `bot/wick.py`. Kontrollohet çdo minutë, vetëm në ar.
 
 DBD i thyer pastër (RBR për SELL). Zona = hija e qiririt të fundit bullish të bazës, **nga open deri te low**.
 
-**3. Konfluenca, të paktën 1 nga këto:**
-- **SNR** në H4, H1 ose M30 (swing në të majtë të bazës);
-- **trendline me 3 prekje** (H4/H1/M30) që arrin tani në zonë.
+**3. Konfluenca**
+- **Trendline me 3 prekje** (H4/H1/M30) që arrin tani në zonë: **e detyrueshme**.
+- **SNR** në H4, H1 ose M30 (swing në të majtë të bazës): shënohet si konfluencë shtesë.
 
 **4. Hyrja:** rejection **M1** pasi çmimi prek zonën.
 
@@ -210,10 +210,10 @@ DBD i thyer pastër (RBR për SELL). Zona = hija e qiririt të fundit bullish t�
 
 **6. Invalidimi:** mbyllje me trup përtej zonës në TF-në e pattern-it. Vetëm wick = ende i vlefshëm.
 
-**Në 8 muajt e 2026** (i njëjti kod, spread 0.17$): 468 trade, **−12.4R**, 64% fitime.
-- **Me trendline 3 prekje: 41 trade, +9.3R, 80% fitime.**
-- Me TL + SNR: 29 trade, +7.2R.
-- Vetëm SNR: 456 trade, −14.4R.
+**Në 8 muajt e 2026** (i njëjti kod, spread 0.17$): **43 trade, +8.5R**, 79% fitime, DD 2.2R.
+- Janar–maj +4.8R, qershor–shtator +3.7R. Me kosto 0.30$: +6.5R.
+- Pa trendline-in e detyrueshëm (TL ose SNR): 468 trade, −12.4R.
+- Mostra është e vogël: rreth 1–2 trade në javë.
 
 Label `-Z`, në raport shfaqet si "Zona sniper". Për ta fikur: `ZONE_SNIPER=false`.
 
