@@ -151,7 +151,8 @@ class GoldSniper:
         self.cfg.symbol_id = int(gold["symbolId"])
         c0 = self.base
         gm = Market(c0.symbol_name, self.cfg.symbol_id, c0.lot_size, 1.0, c0.risk_percent, c0.max_lots, "gold",
-                    c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc, daily_close=c0.daily_close_utc)
+                    c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc, daily_close=c0.daily_close_utc,
+                    friday_close_local=c0.close_friday_local)
         self.markets = {gm.symbol_id: gm}
         self.gold = gm
         self.btc = None

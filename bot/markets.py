@@ -6,6 +6,8 @@ SL minimal, spread-i, tolerancat e zonave etj. shumezohen me `scale`.
 """
 from dataclasses import dataclass
 
+from .report import local
+
 
 @dataclass
 class Market:
@@ -21,6 +23,7 @@ class Market:
     close_friday_utc: int = 19   # ari: e premte mbremje mbyllet gjithcka
     close_sunday_utc: int = 20   # btc: e diel mbremje mbyllet gjithcka (IC Markets ndal BTC ~21:00 UTC)
     daily_close: str = ""        # ari: "HH:MM" UTC -> cdo dite mbyllet gjithcka (para swap-it); "" = joaktiv
+    friday_close_local: str = "" # ari: "HH:MM" ora e pronarit (CET/CEST) te premten; "" = close_friday_utc
 
     def in_window(self, dt) -> bool:
         """A eshte ky tregu i botit ne kete kohe (pa marre parasysh oret e hyrjes)."""
@@ -38,6 +41,10 @@ class Market:
             hh, mm = (int(x) for x in self.daily_close.split(":"))
             if (dt.hour, dt.minute) >= (hh, mm) and dt.hour >= self.end_h:
                 return True
+        if self.friday_close_local:
+            hh, mm = (int(x) for x in self.friday_close_local.split(":"))
+            lt = local(dt)
+            return (lt.weekday() == 4 and (lt.hour, lt.minute) >= (hh, mm)) or (wd >= 5 and lt.weekday() != 0)
         if self.close_friday_utc < 0:
             return False
         return (wd == 4 and dt.hour >= self.close_friday_utc) or wd >= 5
