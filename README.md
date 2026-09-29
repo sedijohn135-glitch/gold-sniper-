@@ -415,6 +415,8 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
 | `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (rregullat e pronarit: trendi D1 + engulfing i pastër H4/H1/M30 + zona DBD/RBR poshtë + TL 3 prekje/SNR + rejection M1) |
+| `DAILY_CLOSE_UTC` | bosh | p.sh. `20:45`: ari mbyllet çdo ditë në këtë orë UTC, para swap-it të natës (joaktiv si parazgjedhje: në 2026 sniper-i do të bënte +70R në vend të +149R) |
+| `FIXED_LOTS` | `0` | >0: çdo trade me këtë lot (p.sh. `0.01` për llogari të vogël) në vend të % rrezikut |
 | `MIN_ADR_PCT` | `1.6` | ari i qetë: nën këtë ADR (% e çmimit) sniper/konfluenca/hierarkia s'hapin trade; `0` = pa filter |
 | `BTC_WEEKEND` | `true` | BTCUSD të shtunën dhe të dielën (`false` = fundjava pa tregtim) |
 | `BTC_RISK_PERCENT` | `0.25` | rreziku për trade në BTC (%) |

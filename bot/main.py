@@ -151,7 +151,7 @@ class GoldSniper:
         self.cfg.symbol_id = int(gold["symbolId"])
         c0 = self.base
         gm = Market(c0.symbol_name, self.cfg.symbol_id, c0.lot_size, 1.0, c0.risk_percent, c0.max_lots, "gold",
-                    c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc)
+                    c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc, daily_close=c0.daily_close_utc)
         self.markets = {gm.symbol_id: gm}
         self.gold = gm
         self.btc = None
@@ -413,7 +413,9 @@ class GoldSniper:
             # boti provon perseri ne heshtje ne cdo tick
             for kd in kinds - self.close_notified.get(now_dt.date(), set()):
                 self.close_notified.setdefault(now_dt.date(), set()).add(kd)
-                self.tg.send("🔔 E premte mbremje: pozicionet e arit po mbyllen para fundjaves." if kd == "gold" else
+                self.tg.send(("🔔 E premte mbremje: pozicionet e arit po mbyllen para fundjaves." if now_dt.weekday() >= 4
+                              else f"🔔 Mbyllja ditore ({self.gold.daily_close} UTC): pozicionet e arit mbyllen para swap-it.")
+                             if kd == "gold" else
                              "🔔 E diel mbremje: pozicionet BTC po mbyllen. Te henen boti kthehet te ari.")
             positions = self.my_positions()
             self.check_closed(positions)
@@ -857,9 +859,20 @@ class GoldSniper:
         """ZONA SNIPER: mbyll 1/6 ne cdo TP (pjesa e fundit ne TP-ne e brokerit), SL ne hyrje pas TP1."""
         tps, parts = plan.get("tps") or [], plan.get("parts") or []
         idx = plan.get("tp_idx", 0)
+        buy = plan["side"] == "BUY"
+        if len(parts) == 1 and plan.get("be") and not plan.get("be_done") and tps:
+            # 0.01 lot s'ndahet: pozicioni i plote shkon te TP-ja e fundit, SL ne hyrje pas TP1
+            bid, ask = self.spot()
+            px = bid if buy else ask
+            if (buy and px >= tps[0]) or (not buy and px <= tps[0]):
+                try:
+                    self.client.call("amend_position", {"positionId": pid, "stopLoss": round(plan["entry"], 2)})
+                    plan["sl"], plan["be_done"] = round(plan["entry"], 2), True
+                    self.tg.send(f"🎯 TP1 +{abs(tps[0] - plan['entry']) * 10:.0f} pips: SL ne hyrje ({plan['entry']:.2f})")
+                except McpError as e:
+                    log.error("  SL ne hyrje deshtoi per %s: %s", pid, e)
         if idx >= len(parts) - 1 and not plan.get("trail"):
             return
-        buy = plan["side"] == "BUY"
         bid, ask = self.spot()
         px = bid if buy else ask
         entry, total = plan["entry"], sum(parts)

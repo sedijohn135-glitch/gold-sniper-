@@ -64,6 +64,7 @@ class Config:
     btc_risk_percent: float = 0.25
     btc_max_lots: float = 1.0
     btc_close_sunday_utc: int = 20   # IC Markets ndal BTC rreth 21:00 UTC te dielen
+    daily_close_utc: str = ""     # "20:45" -> ari mbyllet cdo dite ne kete ore UTC (pa swap nate); "" = joaktiv
     close_friday_utc: int = 19    # te premten ne kete ore UTC mbyll gjithcka, pa trade te reja deri te henen (-1 = joaktiv)
     rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
@@ -145,6 +146,7 @@ class Config:
             trend_trail_adr=_f("TREND_TRAIL_ADR", 0.8),
             sticky_trend=_b("STICKY_TREND", True),
             close_friday_utc=_i("CLOSE_FRIDAY_UTC", 19),
+            daily_close_utc=str(_env("DAILY_CLOSE_UTC", "")).strip(),
             conf_on=_b("CONFLUENCE", True),
             conf_min_levels=_i("CONF_MIN_LEVELS", 4),
             conf_rr=_f("CONF_RR", 3.0),
