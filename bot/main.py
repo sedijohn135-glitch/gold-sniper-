@@ -1028,7 +1028,7 @@ class GoldSniper:
                              f"fitim i siguruar +{locked:.1f}R. Vazhdon ta kaleroje.")
 
     def check_daily_loss(self, positions):
-        if self.daily_limit_hit or not self.day_start_balance:
+        if self.cfg.max_daily_loss_pct <= 0 or self.daily_limit_hit or not self.day_start_balance:
             return
         bal, equity = self.balance()
         self.last_balance, self.last_equity = bal, equity

@@ -68,7 +68,7 @@ class Config:
     close_friday_utc: int = 19    # te premten ne kete ore UTC mbyll gjithcka, pa trade te reja deri te henen (-1 = joaktiv)
     rot_tp_adr: float = 0.3       # TP ne ditet e rotacionit (x ADR)
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
-    max_daily_loss_pct: float = 3.0
+    max_daily_loss_pct: float = 0.0   # >0: mbyll gjithcka kur humbja e dites arrin kete %; 0 = joaktiv
     max_trades_per_day: int = 4
     min_sl: float = 3.0           # $ cmim
     max_sl: float = 25.0          # $ cmim
@@ -164,7 +164,7 @@ class Config:
             btc_close_sunday_utc=_i("BTC_CLOSE_SUNDAY_UTC", 20),
             rot_tp_adr=_f("ROT_TP_ADR", 0.3),
             max_positions=_i("MAX_POSITIONS", 1),
-            max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 3.0),
+            max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 0.0),
             max_trades_per_day=_i("MAX_TRADES_PER_DAY", 4),
             min_sl=_f("MIN_SL", 3.0),
             max_sl=_f("MAX_SL", 25.0),
