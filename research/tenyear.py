@@ -182,3 +182,12 @@ if __name__ == "__main__":
 #   stop pas 1 humbjeje +70$ | +722$ ; pas 3 humbjeve +758$ | +180$ ; 2 humbje + hyrje nga 02:00 +746$ | +827$ DD 580
 #   limit 25/50/75% drejt ekstremit -12$/+537$/+348$ | -727$/-304$/+196$ (me keq)
 #   vetem ditet me trend +453$ | +484$ ; vetem rotacion +245$ | -1533$ ; rotacion me drejtimin e djeshem -474$ | -490$
+#
+# Filtri me model (1 tetor): 9,233 trade te sniper-it (2016-2026) me 22 vecori ne hyrje (ora, tipi i dites,
+# pozicioni ne range-in e dites, EMA 20/50/200, bishti, eficienca, ADR relativ...). Walk-forward: cdo vit testohet
+# me model te trajnuar vetem ne vitet para tij. Logjistik / GBM, mban 50-80% te sinjaleve:
+#   2020-2026 te gjitha trade-t +1837$ | modeli me i mire +663$ (logjistik 65%), te tjeret -337$ deri +283$.
+#   Modeli s'e dallon hyrjen fituese: rezultati i nje sinjali eshte praktikisht i paparashikueshem nga keto te dhena.
+# TP ku dita mbush X x ADR (kthesa e pritur), 2026 | 10 vjet: 0.8 +722$ | -243$ ; 1.0 +807$ | -593$ ; 1.2 +791$ | -633$
+#   vetem trend 1.0 +915$ | -747$ ; 1.0 + stop 2 +698$ | +117$ ; 1.5 trend + stop 2 +720$ | +288$
+#   Asnje s'e kalon "stop pas 2 humbjeve" (+713$ | +594$).
