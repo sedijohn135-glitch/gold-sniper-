@@ -158,3 +158,5 @@ if __name__ == "__main__":
 #   INTRADAY trend pa TP deri 22:30 + BE 1R: 525 tr +73.3R DD 24.6 | -234.9R  (RR=0, DAILY_CLOSE_LOCAL=22:30)
 #   intraday pa BE +40.2R | intraday trailing +67.3R | intraday TP 8R +67.5R
 #   SWING TP 8R + BE, vetem e premte: +125.3R DD 20.7 | -342.5R ; swing trailing +148.4R
+#   Hyrjet nga 05 UTC (07:00 ora e Shqiperise) ne vend te 01 UTC: intraday +46.9R (nga +73.3R), swing TP 8R +82.0R
+#   (nga +125.3R). Boti live: 07:00-22:00 (vendimi i pronarit, 30 sht).

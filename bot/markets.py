@@ -25,6 +25,7 @@ class Market:
     daily_close: str = ""        # ari: "HH:MM" UTC -> cdo dite mbyllet gjithcka (para swap-it); "" = joaktiv
     friday_close_local: str = "" # ari: "HH:MM" ora e pronarit (CET/CEST) te premten; "" = close_friday_utc
     daily_close_local: str = ""  # ari: "HH:MM" ora e pronarit, cdo dite mbyllet gjithcka; "" = joaktiv
+    entry_local: str = ""        # ari: "HH:MM-HH:MM" orari i hyrjeve ne oren e pronarit; "" = start_h-end_h UTC
 
     def in_window(self, dt) -> bool:
         """A eshte ky tregu i botit ne kete kohe (pa marre parasysh oret e hyrjes)."""
@@ -61,6 +62,11 @@ class Market:
             return False
         if self.kind == "btc":
             return True
+        if self.entry_local:
+            a, b = self.entry_local.split("-")
+            lt = local(dt)
+            now = (lt.hour, lt.minute)
+            return tuple(int(x) for x in a.split(":")) <= now < tuple(int(x) for x in b.split(":"))
         if self.start_h <= self.end_h:
             return self.start_h <= dt.hour < self.end_h
         return dt.hour >= self.start_h or dt.hour < self.end_h
