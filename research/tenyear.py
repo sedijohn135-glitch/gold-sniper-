@@ -167,3 +167,11 @@ if __name__ == "__main__":
 #   06:00 +68.2 / -442.2 | +111.0 / -458.1     07:00 +46.9 / -499.3 | +82.0 / -511.8
 #   08:00 +37.0 / -454.0 | +76.3 / -543.9      09:00 +60.7 / -332.5 | +90.4 / -420.2
 #   04:00 eshte me e mira ne te dy periudhat per intraday. Boti live: 04:00-22:00 (30 sht).
+#
+# Dalja "ne kthese" (1 tetor), sniper intraday, hyrje 04:00-22:00, mbyllje 22:30, 2026 | 10 vjet:
+#   si tani (rotacion TP 0.3 ADR, trend deri 22:30)    +96.4R DD 17.5 | -210.7R
+#   dalje ne sinjalin e kundert + hyrje ne anen tjeter  +41.1R | -389.4R ; pa TP +37.1R | -328.8R ; pa BE +25.6R
+#   dalje vetem ne maje/fund te kundert, pa rihyrje     +69.9R | -466.1R ; pa TP +69.0R | -375.6R
+#   rotacion TP 0.2 ADR +92.0R | -159.3R ; 0.4 ADR +84.0R | -185.0R
+#   konfirmimi i refuzimit 1 qiri +70.6R | -174.1R ; 3 qirinj +81.0R | -135.2R ; 4 qirinj +76.0R | -116.2R
+#   Asnje dalje "ne kthese" s'e kalon rregullin e tanishem: sinjali i kundert vjen pasi cmimi ka kthyer.
