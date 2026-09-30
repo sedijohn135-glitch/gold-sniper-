@@ -214,7 +214,7 @@ def candidates(m5, p: P, ind, start=0):
             tps += [v for k, v in tl_now if k == opp]
             tps = [c for c in tps if (sell and c < b.c) or (not sell and c > b.c)]
             out.append(dict(i=i, t=t_close, side=side, entry_c=b.c, sl=sl, risk=risk, feats=frozenset(f),
-                            htf=z.tf, tps=sorted(tps, key=lambda c: abs(c - b.c))))
+                            htf=z.tf, tps=sorted(tps, key=lambda c: abs(c - b.c)), wall=(z.tf, z.known, z.kind)))
     return out
 
 
