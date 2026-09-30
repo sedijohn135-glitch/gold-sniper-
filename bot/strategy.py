@@ -60,6 +60,8 @@ class Params:
     leg_min_adr: float = 0.45      # leg-u min para majes/fundit (x ADR)
     confirm_bars: int = 2          # sa qirinj pas ekstremit pranohet konfirmimi
     trend_entries: bool = True     # tregto edhe me trendin (pullback) ne ditet me nje drejtim
+    swing_entries: bool = True     # hyrjet ne maje/fund te dites (kthim)
+    rot_days: bool = True          # tregto edhe ne ditet e rotacionit
     pull_min_adr: float = 0.10     # pullback-u min (x ADR)
     pull_max_adr: float = 0.35     # pullback-u max (x ADR); me i madh = kthim, jo pullback
     day_early_bars: int = 32       # 8 oret e para te dites (qirinj M15) percaktojne tipin e dites
@@ -379,12 +381,14 @@ def detect(bars, i, p: Params, ind=None):
     """Kontrollon qirin e mbyllur `i` per sinjal BUY/SELL."""
     ind = ind or prepare(bars, p)
     if p.mode == "sniper":
-        sig = detect_swing(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
+        sig = detect_swing(bars, i, p, ind["atr"], ind["adr"], ind["pivots"]) if p.swing_entries else None
         if sig is None and p.trend_entries:
             sig = detect_trend(bars, i, p, ind["atr"], ind["adr"], ind["pivots"])
         if sig is None:
             return None
         sig.day = ind["day"][i]
+        if sig.day == "ROT" and not p.rot_days:
+            return None
         # dite trendi: vetem ne drejtimin e dites
         if (sig.day == "UP" and sig.side == "SELL") or (sig.day == "DOWN" and sig.side == "BUY"):
             return None

@@ -90,7 +90,8 @@ def run(bars, cfg: Config, verbose=True):
             else:
                 tp = None if cfg.trailing else (entry + risk * cfg.rr if sig.side == "BUY" else entry - risk * cfg.rr)
             open_pos.append({"side": sig.side, "entry": entry, "sl": sl, "tp": tp, "risk": risk,
-                             "best": entry, "t": nb.t, "extreme": sig.extreme})
+                             "best": entry, "t": nb.t, "extreme": sig.extreme,
+                             "kind": sig.kind, "day": sig.day})
             last_entry_i = i
             per_day[nt.date()] = per_day.get(nt.date(), 0) + 1
 

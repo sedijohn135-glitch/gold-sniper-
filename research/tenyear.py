@@ -147,3 +147,9 @@ if __name__ == "__main__":
 #   si me pare (trailing, pa mbyllje ditore) +149.3R DD 21.4 | trailing + mbyllje ditore +69.8R DD 24.2
 #   TP 2R+BE -23.8R | 3R+BE +33.2R | 4R+BE +48.1R DD 23.6 | 5R+BE +47.8R | 6R+BE +43.8R | 8R+BE +54.2R
 #   pa BE me keq ne cdo rast. Boti live (vendimi i pronarit, 30 sht): TP 4R + BE 1R + mbyllje 22:30.
+#
+# Sniper-i vetem, TP 8R + BE 1R, pa mbyllje ditore (30 shtator), 2026 | 10 vjet (spread 0.2$):
+#   gjithcka (si tani) 437 tr +106.7R DD 18.7 | -232.7R
+#   pa ditet e rotacionit +49.3R DD 22.7 | -78.0R ; vetem pullback trendi +45.0R DD 43.7 | -151.2R
+#   vetem maje/fund +18.2R DD 35.7 | -422.9R ; trailing gjithcka +149.3R | -375.0R
+#   Rotacioni jep gati gjysmen e fitimit te 2026: mbetet.
