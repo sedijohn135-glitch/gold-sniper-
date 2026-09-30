@@ -146,7 +146,10 @@ class Config:
             break_even_r=_f("BREAK_EVEN_R", 1.0),
             trail_adr=_f("TRAIL_ADR", 0.0),
             news_rr=_f("NEWS_RR", 2.0),
-            daily_close_local=str(_env("DAILY_CLOSE_LOCAL", "22:30")).strip(),
+            # e vendosur bosh (ose "0"/"jo"/"off") ne Railway = pa mbyllje ditore
+            daily_close_local=("" if os.environ.get("DAILY_CLOSE_LOCAL", "22:30").strip().lower() in ("", "0", "jo", "off",
+                                                                                                "false")
+                               else os.environ.get("DAILY_CLOSE_LOCAL", "22:30").strip()),
             trail_start_r=_f("TRAIL_START_R", 1.0),
             trend_trail_adr=_f("TREND_TRAIL_ADR", 0.8),
             sticky_trend=_b("STICKY_TREND", True),
