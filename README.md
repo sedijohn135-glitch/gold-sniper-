@@ -415,7 +415,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
 | `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (rregullat e pronarit: trendi D1 + engulfing i pastër H4/H1/M30 + zona DBD/RBR poshtë + TL 3 prekje/SNR + rejection M1) |
-| `ENTRY_HOURS_LOCAL` | `07:00-22:00` | orari i hyrjeve në ar, ora e Shqipërisë (natën pa trade); bosh = `START/END_HOUR_UTC` |
+| `ENTRY_HOURS_LOCAL` | `04:00-22:00` | orari i hyrjeve në ar, ora e Shqipërisë (pa hyrje 22:00-04:00); bosh = `START/END_HOUR_UTC` |
 | `DAILY_CLOSE_LOCAL` | `22:30` | çdo ditë pune ari mbyllet në këtë orë (ora e Shqipërisë), me fitim ose humbje; bosh = joaktiv |
 | `RR` | `4` | TP e sniper-it në R (me `TRAIL_ADR=0`) |
 | `NEWS_RR` | `2` | TP e lajmit në R (me `TRAIL_ADR=0`) |

@@ -44,7 +44,7 @@ class Config:
     rr: float = 4.0               # TP e sniper-it ne R (kur TRAIL_ADR = 0)
     news_rr: float = 2.0          # TP e lajmit ne R (kur TRAIL_ADR = 0)
     daily_close_local: str = "22:30"  # cdo dite ari mbyllet ne kete ore (ora e pronarit); "" = joaktiv
-    entry_local: str = "07:00-22:00"  # orari i hyrjeve te arit, ora e pronarit; "" = START/END_HOUR_UTC
+    entry_local: str = "04:00-22:00"  # orari i hyrjeve te arit, ora e pronarit; "" = START/END_HOUR_UTC
     break_even_r: float = 1.0
     trail_adr: float = 0.0        # trailing stop: distanca x ADR (0 = TP fiks me RR; 0.4 = trailing si me pare)
     trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
@@ -147,7 +147,7 @@ class Config:
             break_even_r=_f("BREAK_EVEN_R", 1.0),
             trail_adr=_f("TRAIL_ADR", 0.0),
             news_rr=_f("NEWS_RR", 2.0),
-            entry_local=str(_env("ENTRY_HOURS_LOCAL", "07:00-22:00")).strip(),
+            entry_local=str(_env("ENTRY_HOURS_LOCAL", "04:00-22:00")).strip(),
             # e vendosur bosh (ose "0"/"jo"/"off") ne Railway = pa mbyllje ditore
             daily_close_local=("" if os.environ.get("DAILY_CLOSE_LOCAL", "22:30").strip().lower() in ("", "0", "jo", "off",
                                                                                                 "false")

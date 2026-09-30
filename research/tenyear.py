@@ -160,3 +160,10 @@ if __name__ == "__main__":
 #   SWING TP 8R + BE, vetem e premte: +125.3R DD 20.7 | -342.5R ; swing trailing +148.4R
 #   Hyrjet nga 05 UTC (07:00 ora e Shqiperise) ne vend te 01 UTC: intraday +46.9R (nga +73.3R), swing TP 8R +82.0R
 #   (nga +125.3R). Boti live: 07:00-22:00 (vendimi i pronarit, 30 sht).
+#
+# Ora e fillimit te hyrjeve (sniper vetem, BE 1R), ora e Shqiperise | intraday 2026 / 10 vjet | swing TP 8R 2026 / 10 vjet:
+#   02:00 +94.6 / -215.1 | +130.5 / -275.4     03:00 +73.3 / -234.9 | +125.3 / -342.5
+#   04:00 +88.3 / -153.9 | +129.8 / -279.6     05:00 +60.7 / -348.9 | +82.8 / -336.6
+#   06:00 +68.2 / -442.2 | +111.0 / -458.1     07:00 +46.9 / -499.3 | +82.0 / -511.8
+#   08:00 +37.0 / -454.0 | +76.3 / -543.9      09:00 +60.7 / -332.5 | +90.4 / -420.2
+#   04:00 eshte me e mira ne te dy periudhat per intraday. Boti live: 04:00-22:00 (30 sht).
