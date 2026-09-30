@@ -397,6 +397,7 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `BREAK_EVEN_R` | `1.0` | SL në hyrje pas kaq R fitim (`0` = joaktiv) |
 | `MAX_DAILY_LOSS_PCT` | `0` | >0: stop për sot pas kaq % humbje (mbyll gjithçka); `0` = joaktiv, boti s'bllokohet |
 | `MAX_TRADES_PER_DAY` | `4` | trade maksimale në ditë |
+| `MAX_DAILY_LOSSES` | `2` | pas kaq humbjeve të sniper-it në ditë boti s'hap trade të reja deri nesër (`0` = joaktiv) |
 | `MIN_SL` / `MAX_SL` | `3` / `25` | kufijtë e SL në $ |
 | `START_HOUR_UTC` / `END_HOUR_UTC` | `1` / `20` | orari i tregtimit (UTC) |
 | `MAX_SPREAD` | `0.5` | spread maksimal në $ |

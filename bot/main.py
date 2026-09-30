@@ -101,6 +101,7 @@ class GoldSniper:
         self.day = None
         self.day_start_balance = None
         self.trades_today = 0
+        self.losses_today = 0     # trade-t e sniper-it te mbyllura me humbje sot
         self.daily_limit_hit = False
         self.last_bar_t = None
         self.last_entry_bar_t = 0
@@ -398,6 +399,7 @@ class GoldSniper:
             self.day = today
             self.day_start_balance = self.balance()[0]
             self.trades_today = 0
+            self.losses_today = 0
             self.daily_limit_hit = False
             self.update_conversion()
             log.info("Dite e re %s | balanca fillestare %.2f %s", today, self.day_start_balance, self.deposit_asset)
@@ -524,6 +526,8 @@ class GoldSniper:
             return log.info("  injoruar: u arrit humbja max ditore")
         if self.trades_today >= c.max_trades_per_day:
             return log.info("  injoruar: %d trade sot (max)", self.trades_today)
+        if c.max_daily_losses and self.losses_today >= c.max_daily_losses:
+            return log.info("  injoruar: %d humbje sot (max)", self.losses_today)
         positions = [q for q in positions if self.module_of(q) == "main"]
         if positions:
             def risk_free(q):
@@ -1115,6 +1119,10 @@ class GoldSniper:
         if not r_ok:
             r = (pnl or 0) / 100     # vetem per ikonen
         self.day_stats["closed"] += 1
+        if (plan.get("module") or "main") == "main" and (r if r_ok else (pnl or 0)) < -0.05:
+            self.losses_today += 1
+            if self.cfg.max_daily_losses and self.losses_today == self.cfg.max_daily_losses:
+                self.tg.send(f"⏸ {self.losses_today} humbje sot: sniper-i s'hap trade te reja deri neser.")
         self.day_stats["r"] += r if r_ok else 0
         self.day_stats["wins"] += r > 0.05
         if pnl is not None:
@@ -1196,6 +1204,7 @@ class GoldSniper:
             "dry_run": self.cfg.dry_run,
             "last_closed_bar": utc(self.last_bar_t) if self.last_bar_t else None,
             "trades_today": self.trades_today,
+            "losses_today": self.losses_today,
             "daily_limit_hit": self.daily_limit_hit,
             "last_signal": self.last_signal,
             "logs": list(RECENT_LOGS)[-40:],

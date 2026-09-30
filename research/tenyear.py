@@ -175,3 +175,10 @@ if __name__ == "__main__":
 #   rotacion TP 0.2 ADR +92.0R | -159.3R ; 0.4 ADR +84.0R | -185.0R
 #   konfirmimi i refuzimit 1 qiri +70.6R | -174.1R ; 3 qirinj +81.0R | -135.2R ; 4 qirinj +76.0R | -116.2R
 #   Asnje dalje "ne kthese" s'e kalon rregullin e tanishem: sinjali i kundert vjen pasi cmimi ka kthyer.
+#
+# Hyrja dhe filtrat e dites (1 tetor), fitimi ne $ per 1 ons (0.01 lot) ne cmimin e sotem, 2026 | 10 vjet (DD):
+#   si tani                        +813$ DD 215 | +38$ DD 1304
+#   STOP pas 2 humbjeve ne dite    +713$ DD 239 | +594$ DD 901   <- boti live: MAX_DAILY_LOSSES=2
+#   stop pas 1 humbjeje +70$ | +722$ ; pas 3 humbjeve +758$ | +180$ ; 2 humbje + hyrje nga 02:00 +746$ | +827$ DD 580
+#   limit 25/50/75% drejt ekstremit -12$/+537$/+348$ | -727$/-304$/+196$ (me keq)
+#   vetem ditet me trend +453$ | +484$ ; vetem rotacion +245$ | -1533$ ; rotacion me drejtimin e djeshem -474$ | -490$

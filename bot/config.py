@@ -74,6 +74,7 @@ class Config:
     max_positions: int = 1        # >1: pozicion shtese vetem kur te hapurit jane pa rrezik (SL >= hyrja)
     max_daily_loss_pct: float = 0.0   # >0: mbyll gjithcka kur humbja e dites arrin kete %; 0 = joaktiv
     max_trades_per_day: int = 4
+    max_daily_losses: int = 2      # pas kaq humbjeve te sniper-it sot s'hapen trade te reja (0 = joaktiv)
     min_sl: float = 3.0           # $ cmim
     max_sl: float = 25.0          # $ cmim
     start_hour_utc: int = 1
@@ -177,6 +178,7 @@ class Config:
             max_positions=_i("MAX_POSITIONS", 1),
             max_daily_loss_pct=_f("MAX_DAILY_LOSS_PCT", 0.0),
             max_trades_per_day=_i("MAX_TRADES_PER_DAY", 4),
+            max_daily_losses=_i("MAX_DAILY_LOSSES", 2),
             min_sl=_f("MIN_SL", 3.0),
             max_sl=_f("MAX_SL", 25.0),
             start_hour_utc=_i("START_HOUR_UTC", 1),
