@@ -47,6 +47,16 @@ Në 8 muajt e 2026:
 **Pas 4 javësh** (~5 trade): shumë pak për gjykim. Kontrollo që hyrjet përputhen me rregullat (zona,
 trendline-i, engulfing-u) dhe vazhdo 2–3 muaj. Nën −6R, shqyrtoji trade-t një nga një.
 
+## Ndryshim i pronarit (30 shtator 2026): TP fikse dhe mbyllje ditore
+
+Nga 30 shtatori çdo trade ka TP dhe ari mbyllet çdo ditë në 22:30, ora e Shqipërisë:
+- sniper-i TP 4R me SL në hyrje pas 1R;
+- lajmi TP 2R;
+- hierarkia, konfluenca dhe Zona sniper kishin TP edhe më parë.
+
+Në 2026 sniper-i me këto rregulla: +48R (DD 24R), kundrejt +149R me trailing pa mbyllje ditore.
+Për sniper-in, pritjet e tabelës më poshtë duhen marrë rreth 1/3.
+
 ## Si gjykohet pas 4 javësh (vetëm ari)
 
 1. **Të gjitha bashkë:** në backtest asnjë periudhë 4-javore s'ishte negative (më e keqja +6R).

@@ -142,3 +142,8 @@ if __name__ == "__main__":
 #   konfluenca  1304 trade   -6.0R (-0.005R/trade) | kosto 0.66: -179.3R.
 #   Te gjitha   4672 trade -150.1R (hier+conf). Perfundimi: +296R i 8 muajve te 2026 s'perseritet ne 10 vjet;
 #   2026 (ari 4,000-5,000$, levizje shume te medha) eshte nje periudhe e vecante per keto module.
+#
+# TP fikse + mbyllje ditore 20:30 UTC (22:30 ora e Shqiperise), sniper, 2026 (spread 0.2$):
+#   si me pare (trailing, pa mbyllje ditore) +149.3R DD 21.4 | trailing + mbyllje ditore +69.8R DD 24.2
+#   TP 2R+BE -23.8R | 3R+BE +33.2R | 4R+BE +48.1R DD 23.6 | 5R+BE +47.8R | 6R+BE +43.8R | 8R+BE +54.2R
+#   pa BE me keq ne cdo rast. Boti live (vendimi i pronarit, 30 sht): TP 4R + BE 1R + mbyllje 22:30.

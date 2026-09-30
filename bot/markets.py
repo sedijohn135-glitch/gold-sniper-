@@ -24,6 +24,7 @@ class Market:
     close_sunday_utc: int = 20   # btc: e diel mbremje mbyllet gjithcka (IC Markets ndal BTC ~21:00 UTC)
     daily_close: str = ""        # ari: "HH:MM" UTC -> cdo dite mbyllet gjithcka (para swap-it); "" = joaktiv
     friday_close_local: str = "" # ari: "HH:MM" ora e pronarit (CET/CEST) te premten; "" = close_friday_utc
+    daily_close_local: str = ""  # ari: "HH:MM" ora e pronarit, cdo dite mbyllet gjithcka; "" = joaktiv
 
     def in_window(self, dt) -> bool:
         """A eshte ky tregu i botit ne kete kohe (pa marre parasysh oret e hyrjes)."""
@@ -40,6 +41,12 @@ class Market:
         if self.daily_close:
             hh, mm = (int(x) for x in self.daily_close.split(":"))
             if (dt.hour, dt.minute) >= (hh, mm) and dt.hour >= self.end_h:
+                return True
+        if self.daily_close_local and wd < 5:
+            hh, mm = (int(x) for x in self.daily_close_local.split(":"))
+            lt = local(dt)
+            # nga ora e mbylljes deri ne mesnate (ora e pronarit): pozicionet mbyllen, s'hapen te reja
+            if lt.weekday() < 5 and (lt.hour, lt.minute) >= (hh, mm):
                 return True
         if self.friday_close_local:
             hh, mm = (int(x) for x in self.friday_close_local.split(":"))

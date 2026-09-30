@@ -41,9 +41,11 @@ class Config:
     fixed_lots: float = 0.0       # >0 -> perdor lot fiks ne vend te % rrezikut
     max_lots: float = 1.0
     min_lots: float = 0.01
-    rr: float = 3.0
+    rr: float = 4.0               # TP e sniper-it ne R (kur TRAIL_ADR = 0)
+    news_rr: float = 2.0          # TP e lajmit ne R (kur TRAIL_ADR = 0)
+    daily_close_local: str = "22:30"  # cdo dite ari mbyllet ne kete ore (ora e pronarit); "" = joaktiv
     break_even_r: float = 1.0
-    trail_adr: float = 0.4        # trailing stop: distanca x ADR (0 = TP fiks me RR)
+    trail_adr: float = 0.0        # trailing stop: distanca x ADR (0 = TP fiks me RR; 0.4 = trailing si me pare)
     trail_start_r: float = 1.0    # trailing fillon pasi fitimi arrin kaq R
     trend_trail_adr: float = 0.8  # ne dite trendi ne drejtimin e trade-it: trailing me i gjere (x ADR; 0 = si trail_adr)
     sticky_trend: bool = True     # trade-i qe njihet si trend mbetet i tille deri ne mbyllje
@@ -140,9 +142,11 @@ class Config:
             risk_percent=_f("RISK_PERCENT", 0.5),
             fixed_lots=_f("FIXED_LOTS", 0),
             max_lots=_f("MAX_LOTS", 1.0),
-            rr=_f("RR", 3.0),
+            rr=_f("RR", 4.0),
             break_even_r=_f("BREAK_EVEN_R", 1.0),
-            trail_adr=_f("TRAIL_ADR", 0.4),
+            trail_adr=_f("TRAIL_ADR", 0.0),
+            news_rr=_f("NEWS_RR", 2.0),
+            daily_close_local=str(_env("DAILY_CLOSE_LOCAL", "22:30")).strip(),
             trail_start_r=_f("TRAIL_START_R", 1.0),
             trend_trail_adr=_f("TREND_TRAIL_ADR", 0.8),
             sticky_trend=_b("STICKY_TREND", True),

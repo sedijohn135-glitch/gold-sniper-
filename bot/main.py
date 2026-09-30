@@ -152,7 +152,7 @@ class GoldSniper:
         c0 = self.base
         gm = Market(c0.symbol_name, self.cfg.symbol_id, c0.lot_size, 1.0, c0.risk_percent, c0.max_lots, "gold",
                     c0.start_hour_utc, c0.end_hour_utc, c0.close_friday_utc, daily_close=c0.daily_close_utc,
-                    friday_close_local=c0.close_friday_local)
+                    friday_close_local=c0.close_friday_local, daily_close_local=c0.daily_close_local)
         self.markets = {gm.symbol_id: gm}
         self.gold = gm
         self.btc = None
@@ -415,7 +415,8 @@ class GoldSniper:
             for kd in kinds - self.close_notified.get(now_dt.date(), set()):
                 self.close_notified.setdefault(now_dt.date(), set()).add(kd)
                 self.tg.send(("🔔 E premte mbremje: pozicionet e arit po mbyllen para fundjaves." if now_dt.weekday() >= 4
-                              else f"🔔 Mbyllja ditore ({self.gold.daily_close} UTC): pozicionet e arit mbyllen para swap-it.")
+                              else f"🔔 Mbyllja ditore ({self.cfg.daily_close_local or self.gold.daily_close}): "
+                                   "pozicionet e arit mbyllen.")
                              if kd == "gold" else
                              "🔔 E diel mbremje: pozicionet BTC po mbyllen. Te henen boti kthehet te ari.")
             positions = self.my_positions()
@@ -581,8 +582,8 @@ class GoldSniper:
         label = self.labels[module]
         if tp_price is not None:
             tp_dist = abs(tp_price - ref_price)
-        if tp_dist is None and not c.trailing and module != "news":
-            tp_dist = risk * c.rr
+        if tp_dist is None and not c.trailing:
+            tp_dist = risk * (c.news_rr if module == "news" else c.rr)
         log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | %s", side, lots, volume, risk,
                  f"TP {tp_dist:.2f}$" if tp_dist else "pa TP (trailing)")
         if c.dry_run:

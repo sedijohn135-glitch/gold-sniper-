@@ -415,6 +415,10 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
 | `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (rregullat e pronarit: trendi D1 + engulfing i pastër H4/H1/M30 + zona DBD/RBR poshtë + TL 3 prekje/SNR + rejection M1) |
+| `DAILY_CLOSE_LOCAL` | `22:30` | çdo ditë pune ari mbyllet në këtë orë (ora e Shqipërisë), me fitim ose humbje; bosh = joaktiv |
+| `RR` | `4` | TP e sniper-it në R (me `TRAIL_ADR=0`) |
+| `NEWS_RR` | `2` | TP e lajmit në R (me `TRAIL_ADR=0`) |
+| `TRAIL_ADR` | `0` | `0` = TP fikse (vendimi i pronarit, 30 shtator); `0.4` = trailing si më parë |
 | `CLOSE_FRIDAY_LOCAL` | `22:30` | e premte: ari mbyllet në këtë orë (ora e Kosovës/Shqipërisë, CET/CEST), 30 min para mbylljes së tregut |
 | `DAILY_CLOSE_UTC` | bosh | p.sh. `20:45`: ari mbyllet çdo ditë në këtë orë UTC, para swap-it të natës (joaktiv si parazgjedhje: në 2026 sniper-i do të bënte +70R në vend të +149R) |
 | `FIXED_LOTS` | `0` | >0: çdo trade me këtë lot (p.sh. `0.01` për llogari të vogël) në vend të % rrezikut |
