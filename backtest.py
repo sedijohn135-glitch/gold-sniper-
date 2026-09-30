@@ -84,11 +84,11 @@ def run(bars, cfg: Config, verbose=True):
             if risk > cfg.max_sl:
                 continue
             sl = entry - risk if sig.side == "BUY" else entry + risk
-            if sig.day == "ROT" and cfg.trailing and cfg.rot_tp_adr > 0:
+            if sig.day == "ROT" and cfg.rot_tp_adr > 0:
                 d = cfg.rot_tp_adr * ind["adr"][i]   # dite rotacioni: TP i vogel
                 tp = entry + d if sig.side == "BUY" else entry - d
             else:
-                tp = None if cfg.trailing else (entry + risk * cfg.rr if sig.side == "BUY" else entry - risk * cfg.rr)
+                tp = None if (cfg.trailing or cfg.rr <= 0) else (entry + risk * cfg.rr if sig.side == "BUY" else entry - risk * cfg.rr)
             open_pos.append({"side": sig.side, "entry": entry, "sl": sl, "tp": tp, "risk": risk,
                              "best": entry, "t": nb.t, "extreme": sig.extreme,
                              "kind": sig.kind, "day": sig.day})

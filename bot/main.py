@@ -555,7 +555,7 @@ class GoldSniper:
         if lots <= 0:
             return
         tp_dist = None
-        if sig.day == "ROT" and c.trailing and c.rot_tp_adr > 0 and self.adr:
+        if sig.day == "ROT" and c.rot_tp_adr > 0 and self.adr:
             tp_dist = c.rot_tp_adr * self.adr   # dite rotacioni: merr fitimin e rotacionit
         self.open_trade(sig.side, lots, risk, entry, tp_dist, f"{kind} | dita: {day_txt}")
         self.last_entry_bar_t = bars[i].t
@@ -583,7 +583,9 @@ class GoldSniper:
         if tp_price is not None:
             tp_dist = abs(tp_price - ref_price)
         if tp_dist is None and not c.trailing:
-            tp_dist = risk * (c.news_rr if module == "news" else c.rr)
+            # RR=0: trade-i i trendit mbahet pa TP deri ne mbylljen ditore (22:30)
+            rr = c.news_rr if module == "news" else c.rr
+            tp_dist = risk * rr if rr > 0 else None
         log.info("  HAP %s %.2f lot (volume %d) | SL %.2f$ | %s", side, lots, volume, risk,
                  f"TP {tp_dist:.2f}$" if tp_dist else "pa TP (trailing)")
         if c.dry_run:

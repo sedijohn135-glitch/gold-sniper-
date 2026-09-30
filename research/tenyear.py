@@ -153,3 +153,8 @@ if __name__ == "__main__":
 #   pa ditet e rotacionit +49.3R DD 22.7 | -78.0R ; vetem pullback trendi +45.0R DD 43.7 | -151.2R
 #   vetem maje/fund +18.2R DD 35.7 | -422.9R ; trailing gjithcka +149.3R | -375.0R
 #   Rotacioni jep gati gjysmen e fitimit te 2026: mbetet.
+#
+# Sniper-i vetem pas rregullimit (dite rotacioni: gjithmone TP 0.3 x ADR), 2026 | 10 vjet:
+#   INTRADAY trend pa TP deri 22:30 + BE 1R: 525 tr +73.3R DD 24.6 | -234.9R  (RR=0, DAILY_CLOSE_LOCAL=22:30)
+#   intraday pa BE +40.2R | intraday trailing +67.3R | intraday TP 8R +67.5R
+#   SWING TP 8R + BE, vetem e premte: +125.3R DD 20.7 | -342.5R ; swing trailing +148.4R
