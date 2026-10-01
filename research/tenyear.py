@@ -191,3 +191,11 @@ if __name__ == "__main__":
 # TP ku dita mbush X x ADR (kthesa e pritur), 2026 | 10 vjet: 0.8 +722$ | -243$ ; 1.0 +807$ | -593$ ; 1.2 +791$ | -633$
 #   vetem trend 1.0 +915$ | -747$ ; 1.0 + stop 2 +698$ | +117$ ; 1.5 trend + stop 2 +720$ | +288$
 #   Asnje s'e kalon "stop pas 2 humbjeve" (+713$ | +594$).
+#
+# 1 tetor: dalje te sinjali i kundert maje/fund (si 1 tetor, BUY 4143.90 -> maja 4192.88 ne 07:30), live 02:00 + stop 2:
+#   live +746$ | +827$ ; dalje kur fitimi >=1R +190$ | -1062$ ; >=2R +290$ | -49$ ; >=3R +382$ | +111$ ;
+#   >=1R + hyrje ne anen tjeter +21$ | -1651$ ; >=2R + anen tjeter +278$ | -691$.
+#   RR fiks (trend/e paqarte): 4 +400$ | -742$ ; 6 +685$ | -261$ ; 8 +832$ | +313$ ; 10 +1041$ | +766$.
+#   Vendimi i pronarit (1 tetor): RR=8 ne Railway (fitimi i madh merret, s'kthehet mbrapsht).
+#   Kontrolli i Opus (M1, SL me gap ne hapje): asnje trailing/kyçje fitimi s'e kalon live-in; BE e menjehershme vs ne
+#   mbyllje M15 (M5, 02/03/04): 2026 +789/+252/+747 vs +749/+147/+710 | 10v +509/+1103/+487 vs +691/+1253/+511 (zhurme).
