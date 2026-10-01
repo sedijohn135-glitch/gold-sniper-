@@ -19,11 +19,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import confluence as conf
 from . import hierarchy as hier
+from . import msnr
 from . import news
 from . import report
 from . import wick
 from .config import Config
 from .data import M15_MS, closed_bars, fetch_bars
+from .zones import aggregate
 from .markets import Market
 from .mcp_client import PRICE_SCALE, McpClient, McpError
 from .strategy import adr_pct, detect, prepare
@@ -120,7 +122,8 @@ class GoldSniper:
         self.open_summary = []   # pozicionet e hapura (per /status)
         # label-i i pozicioneve per cdo modul: sniper, konfluence, hierarki
         self.labels = {"main": cfg.label, "conf": cfg.label + "-C", "hier": cfg.label + "-H", "news": cfg.label + "-N",
-                       "zone": cfg.label + "-Z"}
+                       "zone": cfg.label + "-Z", "msnr": cfg.label + "-M"}
+        self.ms_m15, self.last_ms_t, self.msnr_losses = [], None, 0    # MSNR
         self.zone_params = wick.P()
         self.z_m1, self.z_m15, self.last_m1_t = [], [], None    # qirinjte e ZONA SNIPER
         self.calendar = news.Calendar()
@@ -200,6 +203,10 @@ class GoldSniper:
             if c.news_on:
                 log.info("Moduli LAJMI: 8:30/10:00/14:00 NY, qiri M5 >= 2.5 x ATR -> hyrje ne drejtim te lajmit, "
                          "trailing | sniper pa hyrje 30 min para lajmeve High USD (ForexFactory)")
+            if c.msnr_on:
+                log.info("Moduli MSNR: nivelet A/V/GAP H4/D1 (nga trupi), prekja e pare + thyerje M15 -> hyrje | "
+                         "SL 2$ pertej nivelit | TP %.0fR | SL ne hyrje ne 1R | stop pas %d humbjeve", c.msnr_rr,
+                         c.msnr_max_losses)
             if c.zone_on:
                 log.info("Moduli ZONA SNIPER: trendi D1 + engulfing i paster H4/H1/M30 -> DBD/RBR i thyer ne TF-te "
                          "poshte (deri M1), hija e qiririt + SNR H4/H1/M30 ose TL 3 prekje + rejection M1 | SL %.0f pips "
@@ -343,7 +350,7 @@ class GoldSniper:
         if plan and plan.get("module"):
             return plan["module"]
         tags = (find_key(pos, "label"), find_key(pos, "comment"))
-        m = next((m for m in ("conf", "hier", "news", "zone") if self.labels[m] in tags), None)
+        m = next((m for m in ("conf", "hier", "news", "zone", "msnr") if self.labels[m] in tags), None)
         if m:
             return m
         # pozicion nga para rinisjes pa label: pa TP -> sniper me trailing; TP = rot_tp_adr x ADR nga hyrja
@@ -400,6 +407,7 @@ class GoldSniper:
             self.day_start_balance = self.balance()[0]
             self.trades_today = 0
             self.losses_today = 0
+            self.msnr_losses = 0
             self.daily_limit_hit = False
             self.update_conversion()
             log.info("Dite e re %s | balanca fillestare %.2f %s", today, self.day_start_balance, self.deposit_asset)
@@ -454,8 +462,13 @@ class GoldSniper:
                     self.zone_tick(now, positions)
                 except McpError as e:
                     log.error("ZONA SNIPER: gabim cTrader: %s", e)
+        if self.cfg.msnr_on and self.mkt.kind == "gold":
+            try:
+                self.msnr_tick(now, positions)
+            except McpError as e:
+                log.error("MSNR: gabim cTrader: %s", e)
         self.open_summary = [
-            {"conf": "[K] ", "hier": "[H] ", "news": "[L] ", "zone": "[Z] "}.get(self.module_of(p), "")
+            {"conf": "[K] ", "hier": "[H] ", "news": "[L] ", "zone": "[Z] ", "msnr": "[M] "}.get(self.module_of(p), "")
             + f"{side_of(p)} {(find_key(p, 'volume') or 0) / (self.cfg.lot_size * 100):.2f} lot"
             f" @ {to_price(find_key(p, 'price', 'entryPrice', 'openPrice')) or 0:.2f}"
             f" | SL {to_price(find_key(p, 'stopLoss')) or 0:.2f}" for p in positions]
@@ -671,6 +684,7 @@ class GoldSniper:
                f" pips ({len(self.plans[pid].get('tps', [1]))} pjese), SL ne hyrje pas TP1"
                + (f", pastaj trailing {self.plans[pid]['trail'] * 10:.0f} pips" if self.plans[pid].get("trail") else "")
                if module == "zone" else
+               f"TP {tp:.2f} ({c.msnr_rr:g}R), SL ne hyrje ne 1R" if module == "msnr" and tp else
                f"TP {tp:.2f} (dite rotacioni)" if tp else
                "Pa TP: trailing stop, e mban deri sa kthehet trendi" if c.trailing else
                "Pa TP: mbahet deri ne mbylljen ditore" + (f" ({c.daily_close_local})" if c.daily_close_local else "")
@@ -754,6 +768,9 @@ class GoldSniper:
             if module == "zone" and plan is not None and plan.get("tps"):
                 self.manage_partials(pid, pos, plan)
                 continue
+            if module == "msnr" and plan is not None:
+                self.manage_stop(pid, pos, plan)     # MSNR: SL/TP fikse + SL ne hyrje ne 1R (si ne backtest)
+                continue
             if module not in ("main", "news"):
                 # konfluenca/hierarkia: SL dhe TP fikse, pa break-even/trailing (si ne backtest)
                 if plan is None:
@@ -814,6 +831,52 @@ class GoldSniper:
                          "+".join(sig["feats"]), sig["sl"], sig["tp"], utc(newest.t))
                 self.fixed_trade("hier", sig, p.min_rr, p.min_sl, p.max_sl, now, positions,
                                  f"HIERARKIA: muri {sig['htf']} s'u thye + {conf_txt} + rejection M5")
+
+    # ------------------------------------------------------------ MSNR (SNR Malajzian)
+    def msnr_tick(self, now, positions):
+        """Ne cdo mbyllje M15: 70 dite M15 -> H4/D1 -> nivelet dhe sinjali (bot/msnr.py, i njejti kod si backtest-i)."""
+        c = self.cfg
+        if self.last_ms_t is not None and now < self.last_ms_t + 2 * M15_MS + 5000:
+            return
+        since = now - 70 * 86_400_000 if not self.ms_m15 else self.ms_m15[-1].t - M15_MS
+        merged = {b.t: b for b in self.ms_m15}
+        merged.update({b.t: b for b in fetch_bars(self.client, c.symbol_id, since, now, "M_15")})
+        self.ms_m15 = [merged[k] for k in sorted(merged) if k >= now - 70 * 86_400_000 and k + M15_MS <= now]
+        if not self.ms_m15 or self.ms_m15[-1].t == self.last_ms_t:
+            return
+        self.last_ms_t = self.ms_m15[-1].t
+        end = self.last_ms_t + M15_MS
+        # vetem qirinjte H4/D1 te mbyllur; D1 = dita tregtare (22:00 UTC), si ne backtest
+        htf = {"H4": [b for b in aggregate(self.ms_m15, 240) if b.t + 4 * 3_600_000 <= end],
+               "D1": [b for b in aggregate(self.ms_m15, 1440, offset_ms=2 * 3_600_000) if b.t + 86_400_000 <= end]}
+        sig = msnr.signal(self.ms_m15, htf, msnr.P(rr=c.msnr_rr))
+        if not sig:
+            return
+        role = "rezistence" if sig["side"] == "SELL" else "support"
+        note = (f"MSNR: {sig['tf']} {role} {sig['typ']} {sig['level']:.2f} (fresh, prekja e pare) + thyerje strukture M15")
+        log.info("MSNR %s | %s %s %.2f | qiri %s", sig["side"], sig["tf"], sig["typ"], sig["level"], utc(self.last_ms_t))
+        if self.daily_limit_hit:
+            return log.info("  injoruar: u arrit humbja max ditore")
+        if c.msnr_max_losses and self.msnr_losses >= c.msnr_max_losses:
+            return log.info("  injoruar: MSNR %d humbje sot (max)", self.msnr_losses)
+        if any(self.module_of(q) == "msnr" for q in positions):
+            return log.info("  injoruar: MSNR ka pozicion te hapur")
+        if not self.mkt.can_open(datetime.fromtimestamp(now / 1000, timezone.utc)):
+            return log.info("  injoruar: jashte orarit te %s", self.mkt.name)
+        bid, ask = self.spot()
+        if ask - bid > c.max_spread:
+            return log.info("  injoruar: spread %.2f", ask - bid)
+        buy = sig["side"] == "BUY"
+        entry = ask if buy else bid
+        if (buy and entry <= sig["sl"]) or (not buy and entry >= sig["sl"]):
+            return log.info("  injoruar: cmimi ka kaluar SL-ne")
+        p = msnr.P()
+        risk = max(abs(entry - sig["sl"]), p.min_sl)
+        if risk > p.max_sl:
+            return log.info("  injoruar: SL %.2f$", risk)
+        lots = self.lots_for(risk)
+        if lots > 0:
+            self.open_trade(sig["side"], lots, risk, entry, tp_dist=c.msnr_rr * risk, note=note, module="msnr")
 
     # ------------------------------------------------------------ ZONA SNIPER (M1)
     def zone_tick(self, now, positions):
@@ -1014,7 +1077,7 @@ class GoldSniper:
             buf = max(ask - bid, 0.05)
             be = entry + buf if buy else entry - buf
             new_sl = max(new_sl, be) if buy else min(new_sl, be)
-        if c.trailing and self.adr and fav >= risk * c.trail_start_r:
+        if c.trailing and self.adr and fav >= risk * c.trail_start_r and plan.get("module") != "msnr":
             # dite trendi ne drejtimin e trade-it -> jepi me shume hapesire; pasi trade-i njihet
             # si trend mbetet i tille, qe nje rikthim te mos e ngushtoje trailing-un
             with_trend = self.day_kind == ("UP" if buy else "DOWN") and not plan.get("trail_fixed")
@@ -1122,6 +1185,8 @@ class GoldSniper:
         if not r_ok:
             r = (pnl or 0) / 100     # vetem per ikonen
         self.day_stats["closed"] += 1
+        if plan.get("module") == "msnr" and (r if r_ok else (pnl or 0)) < -0.05:
+            self.msnr_losses += 1
         if (plan.get("module") or "main") == "main" and (r if r_ok else (pnl or 0)) < -0.05:
             self.losses_today += 1
             if self.cfg.max_daily_losses and self.losses_today == self.cfg.max_daily_losses:

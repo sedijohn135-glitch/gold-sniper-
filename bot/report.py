@@ -6,7 +6,7 @@ moduli dhe R-ja nga ditari i botit (ne memorie, s'ruhen pas rinisjes: atehere sh
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-MODULE_NAMES = {"main": "Sniper", "conf": "Konfluenca", "hier": "Hierarkia", "news": "Lajmi", "zone": "Zona sniper",
+MODULE_NAMES = {"main": "Sniper", "conf": "Konfluenca", "hier": "Hierarkia", "news": "Lajmi", "zone": "Zona sniper", "msnr": "MSNR",
                 "old": "Sniper/fiks (pas rinisjes)", "?": "i panjohur (para rinisjes)"}
 DAYS = ["Hen", "Mar", "Mer", "Enj", "Pre", "Sht", "Die"]
 

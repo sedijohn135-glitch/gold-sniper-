@@ -217,6 +217,21 @@ DBD i thyer pastër (RBR për SELL). Zona = hija e qiririt të fundit bullish t�
 
 Label `-Z`, në raport shfaqet si "Zona sniper". Për ta fikur: `ZONE_SNIPER=false`.
 
+### MSNR: SNR Malajzian (1 tetor 2026, `MSNR=true` për ta ndezur)
+
+Rregullat nga kurset KororFX / Emperor 7 / SNR Malaysia / Rare SnR, të përkthyera në kod (`bot/msnr.py`):
+- **Nivelet nga trupi** i qirinjve H4 dhe D1: A = mbyllja e qirit bullish para një bearish (rezistencë),
+  V = mbyllja e qirit bearish para një bullish (support), GAP = si A/V por qiri i dytë është momentum.
+- **Vetëm prekja e parë** e një niveli fresh origjinal (jo RBS/SBR të flip-uara), max 30 ditë i vjetër.
+- **Konfirmimi 2 TF më poshtë**: pas prekjes, M15 mbyllet përtej strukturës së 2 orëve para prekjes (D1: 8 orë),
+  pa u mbyllur qiri H4/D1 përtej nivelit.
+- Hyrje në treg, SL 2$ pas nivelit (20 pips), TP 4R, SL në hyrje në 1R, një pozicion, stop pas 2 humbjeve, 22:30.
+
+Backtest (`python -m research.msnr`, i njëjti motor si boti, spread 0.20$, 0.01 lot): hyrje nga 02:00 →
+2026 60 trade +227$ DD 93$ | 2016-2025 1562 trade +933$ DD 331$ (8 nga 11 vite pozitive); nga 03:00 +226$ | +730$;
+nga 04:00 +219$ | +364$. Nivelet e flip-uara dhe filtrat MISS / storyline / X factor / kill zones s'e përmirësuan.
+Label `-M`, në raport "MSNR".
+
 ### Testi 10-vjeçar dhe filtri i arit të qetë
 
 Modulet u testuan edhe në 10 vjet ar (2016–2025, HistData M1, `research/tenyear.py`), me vlerat në $
@@ -415,6 +430,9 @@ Nëse do ta provosh pa hapur trade, vendos `DRY_RUN=true`: boti shkruan sinjalet
 | `HIER_RR` | `2.0` | TP i hierarkisë duhet të jetë të paktën kaq R larg |
 | `HIER_MIN_SL` | `3.0` | SL minimal i hierarkisë në $ |
 | `NEWS` | `true` | moduli i lajmeve + sniper pa hyrje 30 min para lajmeve High USD |
+| `MSNR` | `false` | moduli MSNR (SNR Malajzian): nivelet A/V/GAP H4/D1 nga trupi, prekja e parë + thyerje M15, SL 2$ pas nivelit, TP 4R, SL në hyrje në 1R |
+| `MSNR_RR` | `4` | TP-ja e MSNR në R |
+| `MSNR_MAX_LOSSES` | `2` | pas kaq humbjeve MSNR në ditë s'hap më (`0` = joaktiv) |
 | `ZONE_SNIPER` | `true` | moduli ZONA SNIPER (rregullat e pronarit: trendi D1 + engulfing i pastër H4/H1/M30 + zona DBD/RBR poshtë + TL 3 prekje/SNR + rejection M1) |
 | `ENTRY_HOURS_LOCAL` | `04:00-22:00` | orari i hyrjeve në ar, ora e Shqipërisë (pa hyrje 22:00-04:00); bosh = `START/END_HOUR_UTC` |
 | `DAILY_CLOSE_LOCAL` | `22:30` | çdo ditë pune ari mbyllet në këtë orë (ora e Shqipërisë), me fitim ose humbje; bosh = joaktiv |

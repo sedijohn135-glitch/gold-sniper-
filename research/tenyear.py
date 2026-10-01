@@ -199,3 +199,13 @@ if __name__ == "__main__":
 #   Vendimi i pronarit (1 tetor): RR=8 ne Railway (fitimi i madh merret, s'kthehet mbrapsht).
 #   Kontrolli i Opus (M1, SL me gap ne hapje): asnje trailing/kyçje fitimi s'e kalon live-in; BE e menjehershme vs ne
 #   mbyllje M15 (M5, 02/03/04): 2026 +789/+252/+747 vs +749/+147/+710 | 10v +509/+1103/+487 vs +691/+1253/+511 (zhurme).
+#
+# Faza 0 (1 tetor), filtra mbi sniper-in live (stop 2), 2026 | 10 vjet, hyrje 02/03/04:
+#   TDO (SELL mbi hapjen 00:00 NY, BUY nen te): +186/-189/-129$ | -753/-41/-1234$ ; kill zones 08-11 + 13-17:
+#   +580$ | -2149$ ; TDO+KZ -183$ | -1201$. Te gjitha me keq se live (+746/+218/+713 | +827/+1386/+594).
+# Faza 1 MSNR (research/msnr.py, bot/msnr.py): te gjitha nivelet H4/D1 (edhe RBS/SBR) +224$ | +407$;
+#   vetem nivelet origjinale A/V/GAP, prekja e pare, thyerje M15, SL 2$ pas nivelit, TP 4R, BE 1R:
+#   02:00 2026 60 tr +227$ DD 93 | 10v 1562 tr +933$ DD 331 ; 03:00 +226$ | +730$ ; 04:00 +219$ | +364$.
+#   TP 2R/3R/niveli +114/+162/+197$ | +543/+763/+670$. Prova e rastesise (nensample i rastit i te gjitha niveleve):
+#   vetem 4.7% e 2000 provave e kalojne ne 10 vjet (16-20 5.8%, 21-25 17.2%, 2026 6.8%).
+#   S'ndihmuan: MISS, storyline D1, X factor (TL x SNR), kill zones, retest-limit, SL pas majes se prekjes.

@@ -54,6 +54,9 @@ class Config:
     conf_min_levels: int = 4
     conf_rr: float = 3.0
     hier_on: bool = True          # moduli i hierarkise (muri H1 + thyerje strukture M5 + divergjence AO)
+    msnr_on: bool = False         # MSNR: SNR Malajzian (nivelet A/V/GAP H4/D1 nga trupi, prekja e pare + thyerje M15)
+    msnr_rr: float = 4.0
+    msnr_max_losses: int = 2
     zone_on: bool = True          # ZONA SNIPER: hija e DBD/RBR e thyer M15 + engulfing HTF + rejection (+ kunder)
     hier_rr: float = 2.0
     hier_min_sl: float = 3.0
@@ -164,6 +167,9 @@ class Config:
             conf_rr=_f("CONF_RR", 3.0),
             hier_on=_b("HIERARCHY", True),
             zone_on=_b("ZONE_SNIPER", True),
+            msnr_on=_b("MSNR", False),
+            msnr_rr=_f("MSNR_RR", 4.0),
+            msnr_max_losses=_i("MSNR_MAX_LOSSES", 2),
             hier_rr=_f("HIER_RR", 2.0),
             hier_min_sl=_f("HIER_MIN_SL", 3.0),
             news_on=_b("NEWS", True),
