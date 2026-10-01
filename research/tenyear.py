@@ -221,3 +221,8 @@ if __name__ == "__main__":
 #   90 min TP 2R -160$ | -35$ ; vetem ari kalon +92$ | -790$ ; vetem argjendi kalon -113$ | -222$.
 # Candle Range Theory (research/crt.py, D1 range + mbyllje H4 brenda): -107$ | -432$ ; TP 2R -107$ | -206$ ;
 #   pa BE -65$ | +323$ (2023 -490$). Asnje model ICT/QT s'ka avantazh te qendrueshem.
+# CRT Konservative H4->M5 sipas dokumentit te pronarit (research/crt2.py, cTrader M5 2016-2026), 2026 | 10 vjet:
+#   dokumenti (C1 01/05/09 NY, purge 03-05/08-10, CISD, limit te OB, TP1 50% BE, TP2 skaji, RR>=2):
+#   10 tr -48$ | 139 tr -61$ ; TP vetem 50% -35$ | -94$ ; pa qirinj kyc -102$ | -52$ ; pa dritare +86$ | +61$ ;
+#   pa kyc + pa dritare +19$ | -12$ (1100 tr) ; hyrje ne treg +6$ | -89$ ; RR>=1.5 -57$ | -76$ ; 3AM C1 17/21 -54$ | +60$ (45 tr).
+#   CRT s'ka avantazh ne ar ne asnje variant (rreth zeros, pak trade).
