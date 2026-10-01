@@ -209,3 +209,8 @@ if __name__ == "__main__":
 #   TP 2R/3R/niveli +114/+162/+197$ | +543/+763/+670$. Prova e rastesise (nensample i rastit i te gjitha niveleve):
 #   vetem 4.7% e 2000 provave e kalojne ne 10 vjet (16-20 5.8%, 21-25 17.2%, 2026 6.8%).
 #   S'ndihmuan: MISS, storyline D1, X factor (TL x SNR), kill zones, retest-limit, SL pas majes se prekjes.
+#
+# Faza 2, Trendline Breakout H1 (research/tlbo.py, rregullat e librit), 2026 | 10 vjet:
+#   libri (swing k=3, BE 1R) -138$ | -1455$ ; pa BE +83$ | -1676$ ; vetem #1 +105$ | -1105$ ; vetem #2 -139$ | -859$ ;
+#   TP 2R/3R +143/+198$ | -1520/-1733$ ; swing k=6 +16$ | +317$ (pa BE +45$ | +392$) ; k=10 -91$ | -52$.
+#   Pa avantazh te qendrueshem (vetem k=6 pozitiv, k=3 dhe k=10 negativ).
