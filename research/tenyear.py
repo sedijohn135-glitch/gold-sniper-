@@ -214,3 +214,10 @@ if __name__ == "__main__":
 #   libri (swing k=3, BE 1R) -138$ | -1455$ ; pa BE +83$ | -1676$ ; vetem #1 +105$ | -1105$ ; vetem #2 -139$ | -859$ ;
 #   TP 2R/3R +143/+198$ | -1520/-1733$ ; swing k=6 +16$ | +317$ (pa BE +45$ | +392$) ; k=10 -91$ | -52$.
 #   Pa avantazh te qendrueshem (vetem k=6 pozitiv, k=3 dhe k=10 negativ).
+#
+# Faza 3, ICT/QT me argjendin (research/qt_smt.py, M5 nga cTrader 2016-2026 per XAUUSD dhe XAGUSD):
+#   SSMT 90 min + CISD, TP ERL: 2026 -109$ | 10v +105$ (7 nga 11 vite negative) ; +TDO -39$ | -601$ ;
+#   6 ore +268$ | -999$ ; 6 ore +TDO +458$ | -201$ ; dita (PDH/PDL) +184$ | -640$ ; +TDO +160$ | -840$ ;
+#   90 min TP 2R -160$ | -35$ ; vetem ari kalon +92$ | -790$ ; vetem argjendi kalon -113$ | -222$.
+# Candle Range Theory (research/crt.py, D1 range + mbyllje H4 brenda): -107$ | -432$ ; TP 2R -107$ | -206$ ;
+#   pa BE -65$ | +323$ (2023 -490$). Asnje model ICT/QT s'ka avantazh te qendrueshem.
