@@ -671,7 +671,10 @@ class GoldSniper:
                f" pips ({len(self.plans[pid].get('tps', [1]))} pjese), SL ne hyrje pas TP1"
                + (f", pastaj trailing {self.plans[pid]['trail'] * 10:.0f} pips" if self.plans[pid].get("trail") else "")
                if module == "zone" else
-               f"TP {tp:.2f} (dite rotacioni)" if tp else "Pa TP: trailing stop, e mban deri sa kthehet trendi"))
+               f"TP {tp:.2f} (dite rotacioni)" if tp else
+               "Pa TP: trailing stop, e mban deri sa kthehet trendi" if c.trailing else
+               "Pa TP: mbahet deri ne mbylljen ditore" + (f" ({c.daily_close_local})" if c.daily_close_local else "")
+               + ", SL ne hyrje kur fitimi = rreziku"))
         self.protect(pid, details)
 
     def send_market(self, args, before):
