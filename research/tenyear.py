@@ -226,3 +226,10 @@ if __name__ == "__main__":
 #   10 tr -48$ | 139 tr -61$ ; TP vetem 50% -35$ | -94$ ; pa qirinj kyc -102$ | -52$ ; pa dritare +86$ | +61$ ;
 #   pa kyc + pa dritare +19$ | -12$ (1100 tr) ; hyrje ne treg +6$ | -89$ ; RR>=1.5 -57$ | -76$ ; 3AM C1 17/21 -54$ | +60$ (45 tr).
 #   CRT s'ka avantazh ne ar ne asnje variant (rreth zeros, pak trade).
+#
+# ICT Sniper V13 (research/ict_v13.py, specifika mekanike e pronarit, Modulet 1-6), M1: HistData 2016-2025 + cTrader 2026,
+#   2026 | 10 vjet: V13 (dritaret NY, sweep fractal, displacement 1.5xATR + FVG, limit te CE, SL sweep+1$, Zero Float, TP 2R)
+#   463 tr -70$ | 6013 tr -570$ (fit 15%, 9 nga 11 vite negative) ; TP 50/50 (2R + swing) -113$ | -609$ ; TP swing -102$ | -419$ ;
+#   +Modul 6 (time-stop 4 M1 + CE ne fitilin e sweep-it) -72$ | -435$ ; Modul 6 + 50/50 -43$ | -374$ ; pa Zero Float +109$ | -425$ ;
+#   disp 2xATR -155$ | -726$ ; TP 3R -119$ | -462$ ; vetem dritaret NY -95$ | -898$ ;
+#   pa limite ditore (sinjali i paster) 2056 tr -532$ | 23980 tr -3589$ (cdo vit negativ). V13 s'ka avantazh ne ar.
