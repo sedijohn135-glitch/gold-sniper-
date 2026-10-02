@@ -233,3 +233,7 @@ if __name__ == "__main__":
 #   +Modul 6 (time-stop 4 M1 + CE ne fitilin e sweep-it) -72$ | -435$ ; Modul 6 + 50/50 -43$ | -374$ ; pa Zero Float +109$ | -425$ ;
 #   disp 2xATR -155$ | -726$ ; TP 3R -119$ | -462$ ; vetem dritaret NY -95$ | -898$ ;
 #   pa limite ditore (sinjali i paster) 2056 tr -532$ | 23980 tr -3589$ (cdo vit negativ). V13 s'ka avantazh ne ar.
+#
+# MSNR, H4 sipas ores se brokerit (si ne PDF: nivelet A/V = kendet e line chart-it ne grafikun MT4/MT5), live engine,
+#   hyrje 02:00, 2026 | 10 vjet: H4 UTC (boti) +227$ | +933$ DD 331 ; H4 GMT+2 +319$ | +518$ DD 694 ;
+#   H4 GMT+3 +172$ | -256$ DD 826. Mbetet UTC; avantazhi varet shume nga ora e qirinjve H4 (i brishte).
